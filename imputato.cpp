@@ -52,11 +52,36 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
 
     for (int i = 0; i < haplotypes.size(); i++)
     {
-        c2[i] = c[i] 
+        c2[i] = c[i] * rec + (sum - c[i]) * nonrec;
     }
 }
 
+const constexpr int ploidy = 4;
+
 struct individ
 {
-    vector<int> genotypes;    
+    vector<int> genotypes;
+    void samplehaplotypes(int index);
+    void nudgehaplotypes(int index);
 };
+
+void individ::nudgehaplotypes(int index)
+{
+    for (int i = 0; i < genotypes.size(); i++)
+    {
+        array<float, ploidy> probs[2] = {{0.f}, {0.f}};
+        probs[1][0] = 1.f;
+        for (int j = 0; j < ploidy; j++)
+        {
+            std::fill(ploidy[j % 2].begin(), ploidy[j % 2].end(), 0.f);
+            for (int k = 0; k <= j; k++)
+            {
+                float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
+                for (int l = 0; l < 2; l++)
+                {
+                    probs[!(j % 2)][k + l] += probs[!(j % 2)][k] * haplotypes[index + j].posterior[i][l];
+                }
+            }
+        }
+    }
+}
