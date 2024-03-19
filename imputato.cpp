@@ -68,20 +68,41 @@ struct individ
 void individ::nudgehaplotypes(int index)
 {
     for (int i = 0; i < genotypes.size(); i++)
-    {
-        array<float, ploidy> probs[2] = {{0.f}, {0.f}};
-        probs[1][0] = 1.f;
-        for (int j = 0; j < ploidy; j++)
+    {        
+        for (int m = 0; m < ploidy; m++)
         {
-            std::fill(ploidy[j % 2].begin(), ploidy[j % 2].end(), 0.f);
-            for (int k = 0; k <= j; k++)
+            array<float, ploidy> probs[2] = {{0.f}, {0.f}};
+            probs[1][0] = 1.f;
+            int now = 1;
+            for (int j = 0; j < ploidy; j++)
             {
-                float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
-                for (int l = 0; l < 2; l++)
+                if (j == m)
                 {
-                    probs[!(j % 2)][k + l] += probs[!(j % 2)][k] * haplotypes[index + j].posterior[i][l];
+                    continue;
                 }
+                now = !now;
+                std::fill(probs[now].begin(), probs[now].end(), 0.f);
+                for (int k = 0; k < ploidy; k++)
+                {
+                    float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
+                    for (int l = 0; l < 2; l++)
+                    {
+                        probs[!now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
+                    }
+                }
+
+                
             }
         }
+
+        float mean = 0.f;
+        float sum = 1e-30f;
+        for (int j = 0; j < ploidy; j++)
+        {
+            mean += j * probs[ploidy % 2][j];
+            sum += probs[ploidy % 2][j];
+        }
+
+        mean /= sum;
     }
 }
