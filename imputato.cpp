@@ -71,7 +71,7 @@ void individ::nudgehaplotypes(int index)
     {        
         for (int m = 0; m < ploidy; m++)
         {
-            array<float, ploidy> probs[2] = {{0.f}, {0.f}};
+            array<float, ploidy + 1> probs[2] = {{0.f}, {0.f}};
             probs[1][0] = 1.f;
             int now = 1;
             for (int j = 0; j < ploidy; j++)
@@ -87,7 +87,7 @@ void individ::nudgehaplotypes(int index)
                     float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
                     for (int l = 0; l < 2; l++)
                     {
-                        probs[!now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
+                        probs[now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
                     }
                 }
 
