@@ -68,7 +68,11 @@ struct individ
 void individ::nudgehaplotypes(int index)
 {
     for (int i = 0; i < genotypes.size(); i++)
-    {        
+    {
+        if (genotypes[i] == -1) continue;
+
+        int genotype = genotypes[i];
+
         for (int m = 0; m < ploidy; m++)
         {
             array<float, ploidy + 1> probs[2] = {{0.f}, {0.f}};
@@ -90,19 +94,26 @@ void individ::nudgehaplotypes(int index)
                         probs[now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
                     }
                 }
+            }
 
-                
+            float diff = (genotype ? probs[now][genotype - 1] : 0.f) - probs[now][genotype];
+            auto& priors = haplotypes[index + m].prior[i];
+            for (int j = 0; j < 2; j++)
+            {
+                priors[j] *= expf(diff * (j == 1 ? 1 : -1));
+            }
+
+            float sum = 0;
+            for (int j = 0; j < 2; j++)
+            {
+                sum += priors[j];
+            }
+
+            sum = 1.f / sum;
+            for (int j = 0; j < 2; j++)
+            {
+                priors[j] *= sum;
             }
         }
-
-        float mean = 0.f;
-        float sum = 1e-30f;
-        for (int j = 0; j < ploidy; j++)
-        {
-            mean += j * probs[ploidy % 2][j];
-            sum += probs[ploidy % 2][j];
-        }
-
-        mean /= sum;
     }
 }
