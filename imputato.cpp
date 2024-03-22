@@ -87,7 +87,18 @@ struct individ
     vector<int> genotypes;
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
+    void doposteriorhaplotypes(int index);
 };
+
+void individ::samplehaplotypes(int index)
+{
+    
+}
+
+void individ::doposteriorhaplotypes(int index)
+{
+
+}
 
 void individ::nudgehaplotypes(int index)
 {
