@@ -18,7 +18,7 @@ struct map
 
 template<class column> void doemit(column& c, genprob& prior, int marker);
 
-template<class column> void dotransition(column& c, column& d, const map& themap, int marker, int d);
+template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d);
 
 struct haplotype
 {
@@ -26,7 +26,31 @@ struct haplotype
     vector<genprob> prior;
     vector<genprob> posterior;
 
+    // TODO: Fix major
     MatrixXf fwbw[2];
+
+    void dofwbw(bool fw, const map& themap)
+    {
+        int colcount = fwbw[fw].cols();
+
+        int start = fw ? 0 : colcount - 1;
+        int end = fwbw[fw].cols();
+        int step = fw ? 1 : -1;
+        int sidestep = fw ? 0 : -1;
+
+        fwbw[fw].col(start).fill(1.0f / fwbw[fw].rows());
+        for (int m = start; m != end; m += step)
+        {
+            auto col = fwbw[fw].col(m + sidestep);
+            if (m)
+            {
+                int from = m - sidestep - 1;
+                auto srccol = fwbw[fw].col(from);
+                dotransition(srccol, col, themap, from, step);
+            }
+            doemit(col, prior[m + sidestep], m + sidestep);
+        }
+    }
 };
 
 vector<haplotype> haplotypes;
@@ -38,7 +62,7 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
         float val = 0.0f;
         for (int j = 0; j < 2; j++)
         {
-            val += prior[j] * haplotypes[i][j];
+            val += prior[j] * haplotypes[i][marker][j];
         }
     }
 }
