@@ -29,6 +29,7 @@ struct haplotype
 
     // TODO: Fix major
     MatrixXf fwbw[2];
+    vector<float> renorm[2];
 
     void dofwbw(bool fw, const map& themap)
     {
@@ -40,6 +41,7 @@ struct haplotype
         int sidestep = fw ? 0 : -1;
 
         fwbw[fw].col(start).fill(1.0f / fwbw[fw].rows());
+        renorm[fw][start] = 0.0f;
         for (int m = start; m != end; m += step)
         {
             auto col = fwbw[fw].col(m + sidestep);
