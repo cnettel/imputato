@@ -3,6 +3,7 @@
 #include <array>
 #include <eigen3/Eigen/Dense>
 #include <vector>
+#include <random>
 
 using Eigen::MatrixXf;
 using std::array;
@@ -81,6 +82,7 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
 }
 
 const constexpr int ploidy = 4;
+std::mt19937 rng;
 
 struct individ
 {
@@ -92,7 +94,21 @@ struct individ
 
 void individ::samplehaplotypes(int index)
 {
-    
+    // Very crude, biased
+    std::uniform_real_distribution<float> distribution(0.99,1.01); 
+
+    for (int j = 0; j < ploidy; j++)
+    {
+        haplotypes[index + j].posterior.resize(genotypes.size());
+        haplotypes[index + j].prior.resize(genotypes.size());
+        for (int i = 0; i < genotypes.size(); i++)
+        {
+            float val = genotypes[i] / 1.0f * distribution(rng);
+            haplotypes[index + j].prior[i][0] = 1.0f - val;
+            haplotypes[index + j].prior[i][1] = val;
+        }
+    }
+}
 }
 
 void individ::doposteriorhaplotypes(int index)
