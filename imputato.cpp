@@ -81,7 +81,16 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     }
 }
 
+// Borrowed https://stackoverflow.com/questions/17719674/c11-fast-constexpr-integer-powers
+constexpr int64_t ipow_(int base, int exp){
+  return exp > 1 ? ipow_(base, (exp>>1) + (exp&1)) * ipow_(base, exp>>1) : base;
+}
+constexpr int64_t ipow(int base, int exp){
+  return exp < 1 ? 1 : ipow_(base, exp);
+}
+
 const constexpr int ploidy = 4;
+const constexpr int permcount = ipow(ploidy, ploidy);
 std::mt19937 rng;
 
 struct individ
@@ -109,11 +118,35 @@ void individ::samplehaplotypes(int index)
         }
     }
 }
+
+bool getploidyperm(int index, array<int, ploidy>& res)
+{
+    for (int k = 0; k < ploidy; k++)
+    {
+        res[k] = index % ploidy;
+        index /= ploidy;
+
+        for (int m = 0; m < k; m++)
+        {
+            if (res[m] == res[k]) return false;
+        }
+    }
+
+    return true;
 }
 
 void individ::doposteriorhaplotypes(int index)
 {
+    int bestmarker = 0;
+    int bestp = 0;
+    float bestscore = -std::numeric_limits<float>::infinity();
+    for (int p = 0; p < permcount; p++)
+    {
+        array<int, ploidy> perm;
+        if (!getploidyperm(p, perm)) continue;
 
+
+    }
 }
 
 void individ::nudgehaplotypes(int index)
