@@ -149,13 +149,32 @@ void individ::doposteriorhaplotypes(int index)
     int bestmarker = 0;
     int bestp = 0;
     float bestscore = -std::numeric_limits<float>::infinity();
-    for (int p = 0; p < permcount; p++)
+    for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
     {
-        array<int, ploidy> perm;
-        if (!getploidyperm(p, perm)) continue;
+        for (int p = 0; p < permcount; p++)
+        {
+            array<int, ploidy> perm;
+            if (!getploidyperm(p, perm)) continue;
 
+            float sum = 0;
+            for (int j = 0; j < ploidy; j++)
+            {
+                sum += haplotypes[index + j].renorm[1][m];
+                sum += logf((haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + perm[j]].fwbw[0].col(m)).sum() + 1e-30f);
+                sum += haplotypes[index + j].renorm[1][index + perm[j]];
+            }
 
-    }
+            if (sum > bestscore)
+            {
+                bestscore = sum;
+                bestp = p;
+                bestmarker = m;
+            }
+        }
+    }    
+
+    
+    // TODO EXECUTE FLIP
 }
 
 void individ::nudgehaplotypes(int index)
