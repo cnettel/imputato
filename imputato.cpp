@@ -52,6 +52,13 @@ struct haplotype
                 dotransition(srccol, col, themap, from, step);
             }
             doemit(col, prior[m + sidestep], m + sidestep);
+
+            float sum = col.sum();
+            sum += 1e-30;
+            float oldrenorm = renorm[fw][start];
+            renorm[fw][start] += log(sum);
+
+            col *= exp(oldrenorm - renorm[fw][start]);
         }
     }
 };
