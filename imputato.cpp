@@ -108,6 +108,8 @@ struct individ
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
     void doposteriorhaplotypes(int index);
+    std::tuple<int, int, float> findflip(int index);
+    bool handleflip(int index);
 };
 
 void individ::samplehaplotypes(int index)
@@ -144,7 +146,7 @@ bool getploidyperm(int index, array<int, ploidy>& res)
     return true;
 }
 
-void individ::doposteriorhaplotypes(int index)
+std::tuple<int, int, float> individ::findflip(int index)
 {
     int bestmarker = 0;
     int bestp = 0;
@@ -173,8 +175,46 @@ void individ::doposteriorhaplotypes(int index)
         }
     }    
 
-    
-    // TODO EXECUTE FLIP
+    return {bestmarker, bestp, bestscore};
+}
+
+bool individ::handleflip(int index)
+{
+    auto [bestmarker, bestp, bestscore] = findflip(index);
+
+    printf("Found flip for haplotype base index %d, marker %d, bestp %d, best score %f\n", index, bestmarker, bestp, bestscore);
+
+    array<int, ploidy> perm;
+    bool straight = true;
+    for (int j = 0; j < ploidy; j++)
+    {
+        printf("\t%d:%d", j, perm[j]);
+        straight &= perm[j] == j;
+    }
+    printf("\n");
+
+    if (!straight)
+    {
+        array<genprob, ploidy> prior;
+        array<genprob, ploidy> posterior;
+        for (int i = bestmarker + 1; i < haplotypes[index].prior.size(); i++)
+        {
+            for (int j = 0; j < ploidy; j++)
+            {
+                prior[j] = haplotypes[index + j].prior[i];
+                posterior[j] = haplotypes[index + j].posterior[i];
+            }
+
+            for (int j = 0; j < ploidy; j++)
+            {
+                haplotypes[index + j].prior[i] = prior[perm[j]];
+                haplotypes[index + j].posterior[i] = posterior[perm[j]];
+            }
+        }
+    }
+
+    return !straight;
+}
 }
 
 void individ::nudgehaplotypes(int index)
