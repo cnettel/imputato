@@ -215,6 +215,38 @@ bool individ::handleflip(int index)
 
     return !straight;
 }
+
+void individ::doposteriorhaplotypes(int index)
+{
+    MatrixXf probs;
+    for (int j = 0; j < ploidy; j++)
+    {
+        for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
+        {
+            probs = haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + j].fwbw[0].col(m);
+            haplotypes[index + j].posterior[m] = {0.0f, 0.0f};
+            for (int k = 0; k < haplotypes[index].fwbw[0].rows(); k++)
+            {
+                if (!haplotypes[index + j].anyprior[k]) continue;
+
+                for (int z = 0; z < 2; z++)
+                {
+                    haplotypes[index + j].posterior[m][z] += haplotypes[k].prior[m][z] * probs(k);
+                }
+            }
+
+            float sum = 1e-30f;
+            for (int z = 0; z < 2; z++)
+            {
+                sum += haplotypes[index + j].posterior[m][z];
+            }
+            sum = 1 / sum;
+            for (int z = 0; z < 2; z++)
+            {
+                haplotypes[index + j].posterior[m][z] *= sum;
+            }
+        }
+    }
 }
 
 void individ::nudgehaplotypes(int index)
