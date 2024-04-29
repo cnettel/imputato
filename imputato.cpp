@@ -123,6 +123,8 @@ void individ::samplehaplotypes(int index)
         haplotypes[index + j].prior.resize(genotypes.size());
         for (int i = 0; i < genotypes.size(); i++)
         {
+            if (genotypes[i] >= 0)
+        {
             float val = genotypes[i] / 1.0f * distribution(rng);
             haplotypes[index + j].prior[i][0] = 1.0f - val;
             haplotypes[index + j].prior[i][1] = val;
