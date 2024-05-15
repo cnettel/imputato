@@ -116,6 +116,8 @@ struct individ
     bool handleflip(int index);
 };
 
+vector<individ> inds;
+
 void individ::samplehaplotypes(int index)
 {
     // Very crude, biased
