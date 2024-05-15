@@ -15,7 +15,9 @@ struct map
 {
     vector<int> chromstarts;
     vector<float> chromposes;  
-};
+} ourmap;
+
+float Ne = 4000;
 
 template<class column> void doemit(column& c, genprob& prior, int marker);
 
