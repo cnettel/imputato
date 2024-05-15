@@ -76,14 +76,14 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
         float val = 0.0f;
         for (int j = 0; j < 2; j++)
         {
-            val += prior[j] * haplotypes[i][marker][j];
+            val += prior[j] * haplotypes[i].prior[marker][j];
         }
     }
 }
 
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d)
 {
-    float dist = (map.chromposes[marker + d] - map.chromposes[marker]) * d;
+    float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d;
     float nonrec = expf(dist * -0.02 * Ne);
     float rec = (1.0f - nonrec) / haplotypes.size();
     float sum = std::reduce(c.begin(), c.end());
