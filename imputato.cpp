@@ -308,3 +308,48 @@ void individ::nudgehaplotypes(int index)
         }
     }
 }
+
+void initinds()
+{
+    int hapnum = 0;
+    haplotypes.resize(inds.size() * ploidy);
+
+    for (individ& ind : inds)
+    {
+        ind.samplehaplotypes(hapnum);
+        hapnum += ploidy;
+    }
+
+    for (haplotype& hap : haplotypes)
+    {
+        for (int fw = 0; fw < 2; fw++)
+        {
+            hap.fwbw[fw].resize(haplotypes.size(), ourmap.chromposes.size());
+            hap.renorm[fw].resize(ourmap.chromposes.size());
+        }        
+    }
+}
+
+void doit()
+{
+    int hapnum = 0;
+    for (individ& ind : inds)
+    {
+        for (int k = 0; k < ploidy; k++)
+        {
+            for (int fw = 0; fw < 2; fw++)
+            {
+                haplotypes[hapnum + k].dofwbw(fw, ourmap);
+            }
+        }
+        bool flipped = ind.handleflip(hapnum);
+        if (!flipped)
+        {
+            ind.doposteriorhaplotypes(hapnum);
+            ind.nudgehaplotypes(hapnum);
+        }
+
+        hapnum += ploidy;
+    }
+}
+
