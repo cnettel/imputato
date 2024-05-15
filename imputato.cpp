@@ -4,6 +4,8 @@
 #include <eigen3/Eigen/Dense>
 #include <vector>
 #include <random>
+#include <numeric>
+#include <tuple>
 
 using Eigen::MatrixXf;
 using std::array;
