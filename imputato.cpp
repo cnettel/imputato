@@ -355,3 +355,42 @@ void doit()
     }
 }
 
+void readdummy(const char* mapname, const char* genoname)
+{
+    FILE* mapfile = fopen(mapname, "rt");
+    ourmap.chromstarts.push_back(0);
+    int d;
+    fscanf(mapfile, "%d", &d);
+
+    ourmap.chromposes.reserve(d);
+    for (int i = 0; i < d; i++)
+    {
+        float pos;
+        fscanf(mapfile, "%f", &pos);
+        ourmap.chromposes.push_back(pos);
+    }
+    ourmap.chromstarts.push_back(d);
+
+    FILE* indfile = fopen(genoname, "rt");
+    int n;
+    fscanf(indfile, "%d", &n);
+    inds.resize(n);
+    for (individ& ind : inds)
+    {
+        ind.genotypes.resize(d);
+        for (int& g : ind.genotypes)
+        {
+            fscanf(indfile, "%d", &g);
+        }
+    }
+}
+
+int main() 
+{
+    readdummy("dummy.map", "dummy.gen");
+    initinds();
+    for (int k = 0; k < 100; k++)
+    {
+        doit();
+    }
+}
