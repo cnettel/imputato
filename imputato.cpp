@@ -41,12 +41,13 @@ struct haplotype
         int colcount = fwbw[fw].cols();
 
         int start = fw ? 0 : colcount - 1;
-        int end = fwbw[fw].cols();
+        int end = fw ? fwbw[fw].cols() : 0;
         int step = fw ? 1 : -1;
         int sidestep = fw ? 0 : -1;
 
         fwbw[fw].col(start).fill(1.0f / fwbw[fw].rows());
         renorm[fw][start] = 0.0f;
+
         for (int m = start; m != end; m += step)
         {
             auto col = fwbw[fw].col(m + sidestep);
