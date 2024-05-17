@@ -396,6 +396,25 @@ int main()
     initinds();
     for (int k = 0; k < 100; k++)
     {
+        for (int i = 0; i < inds.size(); i++)
+        {
+            for (int j = 0; j < ourmap.chromposes.size(); j++)
+            {
+                printf("%d %d", i, j);
+                for (int k = 0; k < ploidy; k++)
+                {
+                    printf("\t%.4f", haplotypes[i * ploidy + k].prior[j][1]);
+                }
+
+                for (int k = 0; k < ploidy; k++)
+                {
+                    printf("\t\t%.4f", haplotypes[i * ploidy + k].posterior[j][1]);
+                }
+                printf("\n");
+            }
+        }
+        printf("Test! %d\n", k);
         doit();
     }
+
 }
