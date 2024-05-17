@@ -7,7 +7,8 @@
 #include <numeric>
 #include <tuple>
 
-using Eigen::MatrixXf;
+using Eigen::ArrayXXf;
+using Eigen::ArrayXf;
 using std::array;
 using std::vector;
 
@@ -32,7 +33,7 @@ struct haplotype
     vector<genprob> posterior;
 
     // TODO: Fix major
-    MatrixXf fwbw[2];
+    ArrayXXf fwbw[2];
     vector<float> renorm[2];
 
     void dofwbw(bool fw, const map& themap)
@@ -227,7 +228,7 @@ bool individ::handleflip(int index)
 
 void individ::doposteriorhaplotypes(int index)
 {
-    MatrixXf probs;
+    ArrayXf probs;
     for (int j = 0; j < ploidy; j++)
     {
         for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
