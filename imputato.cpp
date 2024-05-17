@@ -179,7 +179,7 @@ std::tuple<int, int, float> individ::findflip(int index)
                 sum += haplotypes[index + j].renorm[1][index + perm[j]];
             }
 
-            if (sum > bestscore)
+            if (sum >= bestscore)
             {
                 bestscore = sum;
                 bestp = p;
@@ -199,6 +199,7 @@ bool individ::handleflip(int index)
 
     array<int, ploidy> perm;
     bool straight = true;
+    getploidyperm(bestp, perm);
     for (int j = 0; j < ploidy; j++)
     {
         printf("\t%d:%d", j, perm[j]);
