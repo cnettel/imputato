@@ -127,15 +127,17 @@ void individ::samplehaplotypes(int index)
 
     for (int j = 0; j < ploidy; j++)
     {
+        haplotypes[index + j].anyprior.resize(ourmap.chromposes.size(), false);
         haplotypes[index + j].posterior.resize(genotypes.size());
         haplotypes[index + j].prior.resize(genotypes.size());
         for (int i = 0; i < genotypes.size(); i++)
         {
             if (genotypes[i] >= 0)
         {
-            float val = genotypes[i] / 1.0f * distribution(rng);
+                float val = genotypes[i] / 1.0f / ploidy * distribution(rng);
             haplotypes[index + j].prior[i][0] = 1.0f - val;
             haplotypes[index + j].prior[i][1] = val;
+                haplotypes[index + j].anyprior[i] = true;
             }
         }
     }
