@@ -136,7 +136,7 @@ void individ::samplehaplotypes(int index)
         {
             if (genotypes[i] >= 0)
         {
-                float val = genotypes[i] / 1.0f / ploidy * distribution(rng);
+                float val = std::clamp((genotypes[i] / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
             haplotypes[index + j].prior[i][0] = 1.0f - val;
             haplotypes[index + j].prior[i][1] = val;
                 haplotypes[index + j].anyprior[i] = true;
