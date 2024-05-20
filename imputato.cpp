@@ -80,6 +80,8 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
         {
             val += prior[j] * haplotypes[i].prior[marker][j];
         }
+
+        c[i] *= val;
     }
 }
 
