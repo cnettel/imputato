@@ -405,12 +405,12 @@ int main()
                 printf("%d %d", i, j);
                 for (int k = 0; k < ploidy; k++)
                 {
-                    printf("\t%.4f", haplotypes[i * ploidy + k].prior[j][1]);
+                    printf("\t%.2f %.2f", haplotypes[i * ploidy + k].prior[j][1], haplotypes[i * ploidy + k].prior[j][0]);
                 }
 
                 for (int k = 0; k < ploidy; k++)
                 {
-                    printf("\t\t%.4f", haplotypes[i * ploidy + k].posterior[j][1]);
+                    printf("\t\t%.2f %.2f ", haplotypes[i * ploidy + k].posterior[j][1], haplotypes[i * ploidy + k].posterior[j][0]);
                 }
                 printf("\n");
             }
