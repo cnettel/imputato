@@ -213,7 +213,7 @@ bool individ::handleflip(int index)
     {
         array<genprob, ploidy> prior;
         array<genprob, ploidy> posterior;
-        for (int i = bestmarker + 1; i < haplotypes[index].prior.size(); i++)
+        for (int i = bestmarker; i < haplotypes[index].prior.size(); i++)
         {
             for (int j = 0; j < ploidy; j++)
             {
