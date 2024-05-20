@@ -351,7 +351,7 @@ void doit()
                 haplotypes[hapnum + k].dofwbw(fw, ourmap);
             }
         }
-        bool flipped = ind.handleflip(hapnum);
+        bool flipped = /*ind.handleflip(hapnum)*/ false;
         if (!flipped)
         {
             ind.doposteriorhaplotypes(hapnum);
