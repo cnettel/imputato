@@ -94,7 +94,7 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
 
     for (int i = 0; i < haplotypes.size(); i++)
     {
-        c2[i] = c[i] * rec + (sum - c[i]) * nonrec;
+        c2[i] = c[i] * rec + (sum /*- c[i]*/) * nonrec;
     }
 }
 
