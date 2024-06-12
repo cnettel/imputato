@@ -179,7 +179,7 @@ std::tuple<int, int, float> individ::findflip(int index)
             {
                 sum += haplotypes[index + j].renorm[1][m];
                 sum += logf((haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + perm[j]].fwbw[0].col(m)).sum() + 1e-30f);
-                sum += haplotypes[index + j].renorm[1][index + perm[j]];
+                sum += haplotypes[index + perm[j]].renorm[0][m];
             }
 
             if (sum >= bestscore)
