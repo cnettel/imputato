@@ -51,9 +51,11 @@ struct haplotype
         for (int m = start; m != end; m += step)
         {
             auto col = fwbw[fw].col(m + sidestep);
+            float srcrenorm = 0;
             if (m)
             {
                 int from = m - sidestep - 1;
+                srcrenorm = renorm[fw][from];
                 auto srccol = fwbw[fw].col(from);
                 dotransition(srccol, col, themap, from, step);
             }
@@ -61,10 +63,9 @@ struct haplotype
 
             float sum = col.sum();
             sum += 1e-30;
-            float oldrenorm = renorm[fw][start];
-            renorm[fw][start] += log(sum);
 
-            col *= exp(oldrenorm - renorm[fw][start]);
+            renorm[fw][m + sidestep] = srcrenorm + log(sum);
+            col *= exp(srcrenorm - renorm[fw][m + sidestep]);
         }
     }
 };
