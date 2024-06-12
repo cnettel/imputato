@@ -20,7 +20,7 @@ struct map
     vector<float> chromposes;  
 } ourmap;
 
-float Ne = 4000;
+float Ne = 4;
 
 template<class column> void doemit(column& c, genprob& prior, int marker);
 
