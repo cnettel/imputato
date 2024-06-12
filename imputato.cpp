@@ -301,7 +301,7 @@ void individ::nudgehaplotypes(int index)
             auto& priors = haplotypes[index + m].prior[i];
             for (int j = 0; j < 2; j++)
             {
-                priors[j] *= expf(diff * (j == 1 ? 1 : -1));
+                priors[j] *= expf(diff * (j == 1 ? 1 : -1)) * 0.01;
             }
 
             float sum = 0;
