@@ -290,7 +290,7 @@ void individ::nudgehaplotypes(int index)
                 for (int k = 0; k < ploidy; k++)
                 {
                     float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
-                    for (int l = 0; l < 2; l++)
+                    for (int l = 0; l < 2 && k + l < ploidy; l++)
                     {
                         probs[now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
                     }
