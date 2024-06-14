@@ -274,30 +274,32 @@ void individ::nudgehaplotypes(int index)
 
         int genotype = genotypes[i];
 
+        float probs[2] = {0.f};
         for (int m = 0; m < ploidy; m++)
         {
-            array<float, ploidy + 1> probs[2] = {{0.f}, {0.f}};
-            probs[1][0] = 1.f;
-            int now = 1;
-            for (int j = 0; j < ploidy; j++)
+            for (int l = 0; l < 2; l++)
             {
-                if (j == m)
-                {
-                    continue;
-                }
-                now = !now;
-                std::fill(probs[now].begin(), probs[now].end(), 0.f);
-                for (int k = 0; k < ploidy; k++)
-                {
-                    float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
-                    for (int l = 0; l < 2 && k + l < ploidy; l++)
-                    {
-                        probs[now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
-                    }
-                }
+                probs[l] += haplotypes[index + m].prior[i][l];
             }
+        }
 
-            float diff = (genotype ? probs[now][genotype - 1] : 0.f) - probs[now][genotype];
+        float sum = probs[0] + probs[1] + 1e-30f;
+        probs[0] /= sum;
+        probs[1] /= sum;
+
+        printf(" %.3f/%.3f", probs[1]*ploidy, (float) genotype);
+        float diffterm = 0;
+        if (genotype >= 0) diffterm += 10 * log(probs[0] / probs[1] / (ploidy - genotype + 1e-30f) * (genotype + 1e-30f));
+        printf(":%+02.3f #", diffterm);
+
+        for (int m = 0; m < ploidy; m++)
+        {
+            float diff = log(haplotypes[index + m].posterior[i][1]/(haplotypes[index + m].posterior[i][0] + 1e-30f));
+            printf("\t%.3f", diff);
+
+            diff += diffterm;
+
+            
             auto& priors = haplotypes[index + m].prior[i];
             for (int j = 0; j < 2; j++)
             {
