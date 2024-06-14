@@ -63,7 +63,7 @@ struct haplotype
 
             float sum = col.sum();
             sum += 1e-30;
-
+            
             renorm[fw][m + sidestep] = srcrenorm + log(sum);
             col *= exp(srcrenorm - renorm[fw][m + sidestep]);
         }
@@ -96,6 +96,10 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     for (int i = 0; i < haplotypes.size(); i++)
     {
         c2[i] = c[i] * rec + (sum /*- c[i]*/) * nonrec;
+    }
+    for (int i = 16; i < haplotypes.size(); i++)
+    {
+        c2[i] = 0;
     }
 }
 
@@ -136,10 +140,10 @@ void individ::samplehaplotypes(int index)
         for (int i = 0; i < genotypes.size(); i++)
         {
             if (genotypes[i] >= 0)
-        {
+            {
                 float val = std::clamp((genotypes[i] / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
-            haplotypes[index + j].prior[i][0] = 1.0f - val;
-            haplotypes[index + j].prior[i][1] = val;
+                haplotypes[index + j].prior[i][0] = 1.0f - val;
+                haplotypes[index + j].prior[i][1] = val;
                 haplotypes[index + j].anyprior[i] = true;
             }
         }
@@ -173,7 +177,7 @@ std::tuple<int, int, float> individ::findflip(int index)
         {
             array<int, ploidy> perm;
             if (!getploidyperm(p, perm)) continue;
-
+            
             float sum = 0;
             for (int j = 0; j < ploidy; j++)
             {
@@ -181,6 +185,8 @@ std::tuple<int, int, float> individ::findflip(int index)
                 sum += logf((haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + perm[j]].fwbw[0].col(m)).sum() + 1e-30f);
                 sum += haplotypes[index + perm[j]].renorm[0][m];
             }
+
+            //if (index == 16) printf("Flip: %d %d %d %f\n", index, m, p, sum);
 
             if (sum >= bestscore)
             {
@@ -257,6 +263,7 @@ void individ::doposteriorhaplotypes(int index)
             {
                 sum += haplotypes[index + j].posterior[m][z];
             }
+            if (sum < 1e-10f) printf("HEJ %d %d %g\n", index + j, m, sum);
             sum = 1 / sum;
             for (int z = 0; z < 2; z++)
             {
@@ -268,11 +275,15 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
+    if (index != 16) return; // TODO
+
     for (int i = 0; i < genotypes.size(); i++)
     {
         if (genotypes[i] == -1) continue;
 
         int genotype = genotypes[i];
+
+        printf("T: %d", i);
 
         for (int m = 0; m < ploidy; m++)
         {
@@ -301,7 +312,7 @@ void individ::nudgehaplotypes(int index)
             auto& priors = haplotypes[index + m].prior[i];
             for (int j = 0; j < 2; j++)
             {
-                priors[j] *= expf(diff * (j == 1 ? 1 : -1)) * 0.01;
+                priors[j] *= expf(diff * (j == 1 ? 1 : -1) * 0.04);
             }
 
             float sum = 0;
@@ -316,6 +327,7 @@ void individ::nudgehaplotypes(int index)
                 priors[j] *= sum;
             }
         }
+        printf("\n");
     }
 }
 
@@ -352,7 +364,7 @@ void doit()
                 haplotypes[hapnum + k].dofwbw(fw, ourmap);
             }
         }
-        bool flipped = /*ind.handleflip(hapnum)*/ false;
+        bool flipped = false && ind.handleflip(hapnum);
         if (!flipped)
         {
             ind.doposteriorhaplotypes(hapnum);
@@ -397,9 +409,9 @@ int main()
 {
     readdummy("dummy.map", "dummy.gen");
     initinds();
-    for (int k = 0; k < 100; k++)
+    for (int k = 0; k < 800; k++)
     {
-        for (int i = 0; i < inds.size(); i++)
+        for (int i = 4; i < inds.size(); i++)
         {
             for (int j = 0; j < ourmap.chromposes.size(); j++)
             {
