@@ -409,11 +409,41 @@ void readdummy(const char* mapname, const char* genoname)
     }
 }
 
+void readrefs(const char* hapname)
+{
+    FILE* indfile = fopen(hapname, "rt");
+    int n;
+    fscanf(indfile, "%d", &n);
+    for (int i = 0; i < n; i++)
+    {
+        haplotype& now = haplotypes.emplace_back();
+        int d = ourmap.chromposes.size();
+        now.anyprior.resize(d);
+        now.posterior.resize(d);
+        now.prior.resize(d);
+        for (int j = 0; j < d; j++)
+        {
+            int val;
+            scanf("%d", &val);
+            if (val >= 0 && val <= 1)
+            {
+                now.prior[j][val] = 1.f - 1e-5f;
+                now.prior[j][!val] = 1e-5f;
+                now.anyprior[j] = true;
+            }
+            else
+            {
+                now.anyprior[j] = false;
+            }
+        }
+    }
+}
+
 int main() 
 {
     readdummy("dummy.map", "dummy.gen");
     initinds();
-    for (int k = 0; k < 800; k++)
+    readrefs("dummy.hap");
     {
         for (int i = 4; i < inds.size(); i++)
         {
