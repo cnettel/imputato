@@ -95,11 +95,11 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d;
     float nonrec = expf(dist * -0.02 * Ne);
     float rec = (1.0f - nonrec) / haplotypes.size();
-    float sum = std::reduce(c.begin(), c.end());
+    float sum = c.sum();
 
     for (int i = 0; i < haplotypes.size(); i++)
     {
-        c2[i] = c[i] * rec + (sum /*- c[i]*/) * nonrec;
+        c2[i] = c[i] * nonrec + (sum /*- c[i]*/) * rec;
     }
     for (int i = 16; i < haplotypes.size(); i++)
     {
