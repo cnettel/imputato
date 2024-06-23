@@ -52,14 +52,15 @@ struct haplotype
         {
             auto col = fwbw[fw].col(m + sidestep);
             float srcrenorm = 0;
-            if (m)
+            if (m - sidestep - 1 >= 0)
             {
                 int from = m - sidestep - 1;
                 srcrenorm = renorm[fw][from];
-                auto srccol = fwbw[fw].col(from);
-                dotransition(srccol, col, themap, from, step);
+                fwbw[fw].col(m + sidestep) = fwbw[fw].col(from);
+                if (!fw && anyprior[from]) doemit(col, prior[from], from);
+                dotransition(col, col, themap, from, step);
             }
-            doemit(col, prior[m + sidestep], m + sidestep);
+            if (fw && anyprior[m + sidestep]) doemit(col, prior[m + sidestep], m + sidestep);
 
             float sum = col.sum();
             sum += 1e-30;
