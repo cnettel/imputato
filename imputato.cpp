@@ -78,9 +78,12 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
     for (int i = 0; i < haplotypes.size(); i++)
     {
         float val = 0.0f;
-        for (int j = 0; j < 2; j++)
+        if (haplotypes[i].anyprior[marker])
+        {
+            for (int j = 0; j < 2; j++)
         {
             val += prior[j] * haplotypes[i].prior[marker][j];
+            }
         }
 
         c[i] *= val;
