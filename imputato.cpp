@@ -439,7 +439,7 @@ void readrefs(const char* hapname)
         for (int j = 0; j < d; j++)
         {
             int val;
-            scanf("%d", &val);
+            fscanf(indfile, "%d", &val);
             if (val >= 0 && val <= 1)
             {
                 now.prior[j][val] = 1.f - 1e-5f;
@@ -458,6 +458,7 @@ int main()
 {
     omp_set_max_active_levels(2);
     readdummy("human.map", "IMP.gen");
+    readrefs("REF.hap");
     initinds();
     readrefs("dummy.hap");
     {
