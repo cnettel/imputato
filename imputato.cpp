@@ -492,13 +492,14 @@ int main()
 {
     omp_set_max_active_levels(2);
     readdummy("human.map", "IMP.gen");
+    inds.resize(2);
     readrefs("REF.hap");
     initinds();
-    readrefs("dummy.hap");
+    for (int k = 0; k < 500; k++)
     {
-        for (int i = 4; i < inds.size(); i++)
+        for (int i = 0; i < 2; i++)
         {
-            for (int j = 0; j < ourmap.chromposes.size(); j++)
+            for (int j = 0; j < 5; j++)
             {
                 printf("%d %d", i, j);
                 for (int k = 0; k < ploidy; k++)
