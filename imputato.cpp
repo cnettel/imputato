@@ -99,14 +99,8 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     float rec = (1.0f - nonrec) / haplotypes.size();
     float sum = c.sum();
 
-    for (int i = 0; i < haplotypes.size(); i++)
-    {
-        c2[i] = c[i] * nonrec + (sum /*- c[i]*/) * rec;
-    }
-    for (int i = 16; i < haplotypes.size(); i++)
-    {
-        c2[i] = 0;
-    }
+    c2 = c * nonrec + sum * rec;
+    c2(Eigen::seq(basehaps, haplotypes.size() - 1)) = 0;
 }
 
 // Borrowed https://stackoverflow.com/questions/17719674/c11-fast-constexpr-integer-powers
