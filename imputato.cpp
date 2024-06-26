@@ -173,10 +173,17 @@ std::tuple<int, int, float> individ::findflip(int index)
     float bestscore = -std::numeric_limits<float>::infinity();
     for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
     {
-        for (int p = 0; p < permcount; p++)
+        bool first = true;
+        for (int p = permcount; p >= 0; p--)
         {
             array<int, ploidy> perm;
             if (!getploidyperm(p, perm)) continue;
+
+            if (first && m != 0)
+            {
+                first = false;
+                continue;
+            }
             
             float sum = 0;
             for (int j = 0; j < ploidy; j++)
@@ -187,6 +194,11 @@ std::tuple<int, int, float> individ::findflip(int index)
             }
 
             //if (index == 16) printf("Flip: %d %d %d %f\n", index, m, p, sum);
+            if (first)
+            {
+                sum += 1.0;
+                first = false;
+            }
 
             if (sum >= bestscore)
             {
