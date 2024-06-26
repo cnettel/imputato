@@ -75,6 +75,7 @@ vector<haplotype> haplotypes;
 
 template<class column> void doemit(column& c, genprob& prior, int marker)
 {
+    #pragma ivdep
     for (int i = 0; i < haplotypes.size(); i++)
     {
         float val = 0.0f;
@@ -85,7 +86,7 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
             val += prior[j] * haplotypes[i].prior[marker][j];
             }
         }
-
+//        if (val < 0 || val > 1) printf("%f\n", val);
         c[i] *= val;
     }
 }
@@ -194,6 +195,7 @@ std::tuple<int, int, float> individ::findflip(int index)
             }
             
             float sum = 0;
+            #pragma ivdep
             for (int j = 0; j < ploidy; j++)
             {
                 sum += haplotypes[index + j].renorm[1][m];
@@ -242,12 +244,14 @@ bool individ::handleflip(int index)
         array<genprob, ploidy> posterior;
         for (int i = bestmarker + 1; i < haplotypes[index].prior.size(); i++) // TODO: CORRECT+
         {
+            #pragma ivdep
             for (int j = 0; j < ploidy; j++)
             {
                 prior[j] = haplotypes[index + j].prior[i];
                 posterior[j] = haplotypes[index + j].posterior[i];
             }
 
+            #pragma ivdep
             for (int j = 0; j < ploidy; j++)
             {
                 haplotypes[index + j].prior[i] = prior[perm[j]];
