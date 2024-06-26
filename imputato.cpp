@@ -291,7 +291,23 @@ void individ::nudgehaplotypes(int index)
 
         int genotype = genotypes[i];
 
-        printf("T: %d", i);
+        if (i < 10 && index < 4) printf("T: %d", i);
+
+        {float probs[2] = {0.f};
+        for (int m = 0; m < ploidy; m++)
+        {
+            for (int l = 0; l < 2; l++)
+            {
+                probs[l] += haplotypes[index + m].prior[i][l];
+            }
+        }
+
+        float sum = probs[0] + probs[1] + 1e-30f;
+        probs[0] /= sum;
+        probs[1] /= sum;
+
+        if (i < 10 && index < 4) printf(" %.3f/%.3f", probs[1]*ploidy, (float) genotype);}
+
 
         for (int m = 0; m < ploidy; m++)
         {
@@ -335,7 +351,7 @@ void individ::nudgehaplotypes(int index)
                 priors[j] *= sum;
             }
         }
-        printf("\n");
+        if (i < 10) printf("\n");
     }
 }
 
