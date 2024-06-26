@@ -111,7 +111,7 @@ constexpr int64_t ipow(int base, int exp){
   return exp < 1 ? 1 : ipow_(base, exp);
 }
 
-const constexpr int ploidy = 4;
+const constexpr int ploidy = 2;
 const constexpr int permcount = ipow(ploidy, ploidy);
 std::mt19937 rng;
 
@@ -330,7 +330,7 @@ void individ::nudgehaplotypes(int index)
             auto& priors = haplotypes[index + m].prior[i];
             for (int j = 0; j < 2; j++)
             {
-                priors[j] *= expf(diff * (j == 1 ? 1 : -1) * 0.04);
+                priors[j] *= expf(diff * (j == 1 ? 1 : -1) * 0.1);
             }
 
             float sum = 0;
