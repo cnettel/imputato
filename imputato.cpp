@@ -171,8 +171,16 @@ std::tuple<int, int, float> individ::findflip(int index)
     int bestmarker = 0;
     int bestp = 0;
     float bestscore = -std::numeric_limits<float>::infinity();
+
+// TODO ONLY COMPUTE STRAIGHT ONCE
+// TODO OPENMP
+// TODO LESS MEMORY
+
+    float scores[haplotypes[index].fwbw[0].cols()][permcount];
+
     for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
     {
+        // TODO PRECALC ACCEL PLOIDY > 2
         bool first = true;
         for (int p = permcount; p >= 0; p--)
         {
