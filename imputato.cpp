@@ -32,7 +32,6 @@ struct haplotype
     vector<genprob> prior;
     vector<genprob> posterior;
 
-    // TODO: Fix major
     ArrayXXf fwbw[2];
     vector<float> renorm[2];
 
@@ -241,8 +240,8 @@ bool individ::handleflip(int index)
         {
             printf("\t%d:%d", j, perm[j]);
         
-    }
-    printf("\n");
+        }
+        printf("\n");
     }
 
     if (!straight)
