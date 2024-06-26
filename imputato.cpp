@@ -90,6 +90,8 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
     }
 }
 
+int basehaps;
+
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d)
 {
     float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d;
@@ -246,6 +248,7 @@ bool individ::handleflip(int index)
 void individ::doposteriorhaplotypes(int index)
 {
     ArrayXf probs;
+#pragma omp parallel for private(probs), collapse(2)    
     for (int j = 0; j < ploidy; j++)
     {
         for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
@@ -281,6 +284,7 @@ void individ::nudgehaplotypes(int index)
 {
     if (index != 16) return; // TODO
 
+#pragma omp parallel for
     for (int i = 0; i < genotypes.size(); i++)
     {
         if (genotypes[i] == -1) continue;
@@ -337,8 +341,9 @@ void individ::nudgehaplotypes(int index)
 
 void initinds()
 {
-    int hapnum = 0;
-    haplotypes.resize(inds.size() * ploidy);
+    int hapnum = haplotypes.size();
+    basehaps = hapnum;
+    haplotypes.resize(basehaps + inds.size() * ploidy);
 
     for (individ& ind : inds)
     {
@@ -346,8 +351,9 @@ void initinds()
         hapnum += ploidy;
     }
 
-    for (haplotype& hap : haplotypes)
+    for (int h = basehaps; h < haplotypes.size(); h++)
     {
+        auto& hap = haplotypes[h];
         for (int fw = 0; fw < 2; fw++)
         {
             hap.fwbw[fw].resize(haplotypes.size(), ourmap.chromposes.size());
@@ -358,24 +364,33 @@ void initinds()
 
 void doit()
 {
-    int hapnum = 0;
-    for (individ& ind : inds)
+    int hapnum = basehaps;
+    #pragma omp parallel for collapse(3), num_threads(8), private(hapnum)
+    for (int i = 0; i < inds.size(); i++)
     {
         for (int k = 0; k < ploidy; k++)
         {
             for (int fw = 0; fw < 2; fw++)
             {
+                hapnum = basehaps + i * ploidy;
+                individ& ind = inds[i];
                 haplotypes[hapnum + k].dofwbw(fw, ourmap);
             }
         }
-        bool flipped = false && ind.handleflip(hapnum);
+    }
+
+    #pragma omp parallel for private(hapnum), num_threads(2)
+    for (int i = 0; i < inds.size(); i++)
+    {
+        hapnum = basehaps + i * ploidy;
+        individ& ind = inds[i];
+        bool flipped = ind.handleflip(hapnum);
         if (!flipped)
         {
+            printf("Nudge %d/%d\n", hapnum, haplotypes.size());
             ind.doposteriorhaplotypes(hapnum);
             ind.nudgehaplotypes(hapnum);
         }
-
-        hapnum += ploidy;
     }
 }
 
@@ -441,7 +456,8 @@ void readrefs(const char* hapname)
 
 int main() 
 {
-    readdummy("dummy.map", "dummy.gen");
+    omp_set_max_active_levels(2);
+    readdummy("human.map", "IMP.gen");
     initinds();
     readrefs("dummy.hap");
     {
@@ -452,12 +468,12 @@ int main()
                 printf("%d %d", i, j);
                 for (int k = 0; k < ploidy; k++)
                 {
-                    printf("\t%.2f %.2f", haplotypes[i * ploidy + k].prior[j][1], haplotypes[i * ploidy + k].prior[j][0]);
+                    printf("\t%.3f %.3f", haplotypes[basehaps + i * ploidy + k].prior[j][1], haplotypes[basehaps + i * ploidy + k].prior[j][0]);
                 }
 
                 for (int k = 0; k < ploidy; k++)
                 {
-                    printf("\t\t%.2f %.2f ", haplotypes[i * ploidy + k].posterior[j][1], haplotypes[i * ploidy + k].posterior[j][0]);
+                    printf("\t\t%.3f %.3f ", haplotypes[basehaps + i * ploidy + k].posterior[j][1], haplotypes[basehaps + i * ploidy + k].posterior[j][0]);
                 }
                 printf("\n");
             }
