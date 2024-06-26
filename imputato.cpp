@@ -226,17 +226,24 @@ bool individ::handleflip(int index)
 {
     auto [bestmarker, bestp, bestscore] = findflip(index);
 
-    printf("Found flip for haplotype base index %d, marker %d, bestp %d, best score %f\n", index, bestmarker, bestp, bestscore);
 
     array<int, ploidy> perm;
     bool straight = true;
     getploidyperm(bestp, perm);
     for (int j = 0; j < ploidy; j++)
     {
-        printf("\t%d:%d", j, perm[j]);
         straight &= perm[j] == j;
     }
+    if (!straight) 
+    {
+        printf("Found flip for haplotype base index %d, marker %d, bestp %d, best score %f\n", index, bestmarker, bestp, bestscore);
+        for (int j = 0; j < ploidy; j++)
+        {
+            printf("\t%d:%d", j, perm[j]);
+        
+    }
     printf("\n");
+    }
 
     if (!straight)
     {
