@@ -26,14 +26,17 @@ template<class column> void doemit(column& c, genprob& prior, int marker);
 
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d);
 
+vector<vector<genprob> > priors;
+vector<vector<char> > anypriors;
+
 struct haplotype
 {
-    vector<bool> anyprior;
-    vector<genprob> prior;
     vector<genprob> posterior;
 
     ArrayXXf fwbw[2];
     vector<float> renorm[2];
+    genprob& getprior(int m) const;
+    char& getanyprior(int m) const;
 
     void dofwbw(bool fw, const map& themap)
     {
@@ -56,10 +59,10 @@ struct haplotype
                 int from = m - sidestep - 1;
                 srcrenorm = renorm[fw][from];
                 fwbw[fw].col(m + sidestep) = fwbw[fw].col(from);
-                if (!fw && anyprior[from]) doemit(col, prior[from], from);
+                if (!fw && getanyprior(from)) doemit(col, getprior(from), from);
                 dotransition(col, col, themap, from, step);
             }
-            if (fw && anyprior[m + sidestep]) doemit(col, prior[m + sidestep], m + sidestep);
+            if (fw && getanyprior(m + sidestep)) doemit(col, getprior(m + sidestep), m + sidestep);
 
             float sum = col.sum();
             sum += 1e-30;
@@ -72,17 +75,31 @@ struct haplotype
 
 vector<haplotype> haplotypes;
 
+genprob& haplotype::getprior(int m) const
+{
+    return priors[m][(this - &haplotypes[0])];
+}
+
+char& haplotype::getanyprior(int m) const
+{
+    return anypriors[m][(this - &haplotypes[0])];
+}
+
+
+
 template<class column> void doemit(column& c, genprob& prior, int marker)
 {
+    vector<genprob>& ourPrior = priors[marker];
+    vector<char>& ourAnyPrior = anypriors[marker];
     #pragma ivdep
     for (int i = 0; i < haplotypes.size(); i++)
     {
         float val = 0.0f;
-        if (haplotypes[i].anyprior[marker])
+        if (ourAnyPrior[i])
         {
             for (int j = 0; j < 2; j++)
-        {
-            val += prior[j] * haplotypes[i].prior[marker][j];
+            {
+                val += prior[j] * ourPrior[i][j];
             }
         }
 //        if (val < 0 || val > 1) printf("%f\n", val);
@@ -133,18 +150,16 @@ void individ::samplehaplotypes(int index)
     std::uniform_real_distribution<float> distribution(0.99,1.01); 
 
     for (int j = 0; j < ploidy; j++)
-    {
-        haplotypes[index + j].anyprior.resize(ourmap.chromposes.size(), false);
+    {        
         haplotypes[index + j].posterior.resize(genotypes.size());
-        haplotypes[index + j].prior.resize(genotypes.size());
         for (int i = 0; i < genotypes.size(); i++)
         {
             if (genotypes[i] >= 0)
             {
                 float val = std::clamp((genotypes[i] / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
-                haplotypes[index + j].prior[i][0] = 1.0f - val;
-                haplotypes[index + j].prior[i][1] = val;
-                haplotypes[index + j].anyprior[i] = true;
+                haplotypes[index + j].getprior(i)[0] = 1.0f - val;
+                haplotypes[index + j].getprior(i)[1] = val;
+                haplotypes[index + j].getanyprior(i) = true;
             }
         }
     }
@@ -248,19 +263,19 @@ bool individ::handleflip(int index)
     {
         array<genprob, ploidy> prior;
         array<genprob, ploidy> posterior;
-        for (int i = bestmarker + 1; i < haplotypes[index].prior.size(); i++) // TODO: CORRECT+
+        for (int i = bestmarker + 1; i < haplotypes[index].posterior.size(); i++)
         {
             #pragma ivdep
             for (int j = 0; j < ploidy; j++)
             {
-                prior[j] = haplotypes[index + j].prior[i];
+                prior[j] = haplotypes[index + j].getprior(i);
                 posterior[j] = haplotypes[index + j].posterior[i];
             }
 
             #pragma ivdep
             for (int j = 0; j < ploidy; j++)
             {
-                haplotypes[index + j].prior[i] = prior[perm[j]];
+                haplotypes[index + j].getprior(i) = prior[perm[j]];
                 haplotypes[index + j].posterior[i] = posterior[perm[j]];
             }
         }
@@ -281,11 +296,11 @@ void individ::doposteriorhaplotypes(int index)
             haplotypes[index + j].posterior[m] = {0.0f, 0.0f};
             for (int k = 0; k < haplotypes[index].fwbw[0].rows(); k++)
             {
-                if (!haplotypes[index + j].anyprior[k]) continue;
+                if (!haplotypes[k].getanyprior(k)) continue;
 
                 for (int z = 0; z < 2; z++)
                 {
-                    haplotypes[index + j].posterior[m][z] += haplotypes[k].prior[m][z] * probs(k);
+                    haplotypes[index + j].posterior[m][z] += haplotypes[k].getprior(m)[z] * probs(k);
                 }
             }
 
@@ -306,8 +321,6 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
-    if (index != 16) return; // TODO
-
 #pragma omp parallel for
     for (int i = 0; i < genotypes.size(); i++)
     {
@@ -322,7 +335,7 @@ void individ::nudgehaplotypes(int index)
         {
             for (int l = 0; l < 2; l++)
             {
-                probs[l] += haplotypes[index + m].prior[i][l];
+                probs[l] += haplotypes[index + m].getprior(i)[l];
             }
         }
 
@@ -357,7 +370,7 @@ void individ::nudgehaplotypes(int index)
             }
 
             float diff = (genotype ? probs[now][genotype - 1] : 0.f) - probs[now][genotype];
-            auto& priors = haplotypes[index + m].prior[i];
+            auto& priors = haplotypes[index + m].getprior(i);
             for (int j = 0; j < 2; j++)
             {
                 priors[j] *= expf(diff * (j == 1 ? 1 : -1) * 0.1);
@@ -384,6 +397,11 @@ void initinds()
     int hapnum = haplotypes.size();
     basehaps = hapnum;
     haplotypes.resize(basehaps + inds.size() * ploidy);
+    for (int i = 0; i < ourmap.chromposes.size(); i++)
+    {
+        priors[i].resize(haplotypes.size());
+        anypriors[i].resize(haplotypes.size(), false);
+    }
 
     for (individ& ind : inds)
     {
@@ -469,26 +487,32 @@ void readrefs(const char* hapname)
     FILE* indfile = fopen(hapname, "rt");
     int n;
     fscanf(indfile, "%d", &n);
+    priors.resize(ourmap.chromposes.size());
+    anypriors.resize(ourmap.chromposes.size());
+    for (int i = 0; i < ourmap.chromposes.size(); i++)
+    {
+        priors[i].resize(haplotypes.size() + n);
+        anypriors[i].resize(haplotypes.size() + n, false);
+    }
+    
     for (int i = 0; i < n; i++)
     {
         haplotype& now = haplotypes.emplace_back();
         int d = ourmap.chromposes.size();
-        now.anyprior.resize(d);
         now.posterior.resize(d);
-        now.prior.resize(d);
         for (int j = 0; j < d; j++)
         {
             int val;
             fscanf(indfile, "%d", &val);
             if (val >= 0 && val <= 1)
             {
-                now.prior[j][val] = 1.f - 1e-5f;
-                now.prior[j][!val] = 1e-5f;
-                now.anyprior[j] = true;
+                now.getprior(j)[val] = 1.f - 1e-5f;
+                now.getprior(j)[!val] = 1e-5f;
+                now.getanyprior(j) = true;
             }
             else
             {
-                now.anyprior[j] = false;
+                now.getanyprior(j) = false;
             }
         }
     }
@@ -510,7 +534,7 @@ int main()
                 printf("%d %d", i, j);
                 for (int k = 0; k < ploidy; k++)
                 {
-                    printf("\t%.3f %.3f", haplotypes[basehaps + i * ploidy + k].prior[j][1], haplotypes[basehaps + i * ploidy + k].prior[j][0]);
+                    printf("\t%.3f %.3f", haplotypes[basehaps + i * ploidy + k].getprior(j)[1], haplotypes[basehaps + i * ploidy + k].getprior(j)[0]);
                 }
 
                 for (int k = 0; k < ploidy; k++)
