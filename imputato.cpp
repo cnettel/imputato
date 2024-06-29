@@ -33,7 +33,7 @@ struct haplotype
 {
     vector<genprob> posterior;
 
-    ArrayXXf fwbw[2];
+    ArrayXXf* fwbw;
     vector<float> renorm[2];
     genprob& getprior(int m) const;
     char& getanyprior(int m) const;
@@ -421,24 +421,26 @@ void initinds()
 
 void doit()
 {
+    // TODO PRIOR SYNC
     int hapnum = basehaps;
-    #pragma omp parallel for collapse(3), num_threads(8), private(hapnum)
+    ArrayXXf fwbw[ploidy][2];
+
+    #pragma omp parallel for num_threads(2), private(hapnum, fwbw)
     for (int i = 0; i < inds.size(); i++)
     {
+        #pragma omp parallel for num_threads(ploidy * 2), collapse(2), private(hapnum)
         for (int k = 0; k < ploidy; k++)
         {
             for (int fw = 0; fw < 2; fw++)
             {
+                printf("TEST %d %d %d\n", i, k, fw);
                 hapnum = basehaps + i * ploidy;
+                haplotypes[hapnum + k].fwbw = fwbw[k];
                 individ& ind = inds[i];
+                haplotypes[hapnum + k].fwbw[fw].resize(haplotypes.size(), ourmap.chromposes.size());
                 haplotypes[hapnum + k].dofwbw(fw, ourmap);
             }
         }
-    }
-
-    #pragma omp parallel for private(hapnum), num_threads(2)
-    for (int i = 0; i < inds.size(); i++)
-    {
         hapnum = basehaps + i * ploidy;
         individ& ind = inds[i];
         bool flipped = ind.handleflip(hapnum);
