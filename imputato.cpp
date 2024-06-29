@@ -187,7 +187,6 @@ std::tuple<int, int, float> individ::findflip(int index)
     int bestp = 0;
     float bestscore = -std::numeric_limits<float>::infinity();
 
-// TODO ONLY COMPUTE STRAIGHT ONCE
 // TODO OPENMP
 // TODO LESS MEMORY
 
