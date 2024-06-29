@@ -40,25 +40,26 @@ struct haplotype
 
     void dofwbw(bool fw, const map& themap)
     {
-        int colcount = fwbw[fw].cols();
+        ArrayXXf& myfwbw = fwbw[fw];
+        int colcount = myfwbw.cols();
 
         int start = fw ? 0 : colcount - 1;
-        int end = fw ? fwbw[fw].cols() : 0;
+        int end = fw ? myfwbw.cols() : 0;
         int step = fw ? 1 : -1;
         int sidestep = fw ? 0 : -1;
 
-        fwbw[fw].col(start).fill(1.0f / fwbw[fw].rows());
+        myfwbw.col(start).fill(1.0f / myfwbw.rows());
         renorm[fw][start] = 0.0f;
 
         for (int m = start; m != end; m += step)
         {
-            auto col = fwbw[fw].col(m + sidestep);
+            auto col = myfwbw.col(m + sidestep);
             float srcrenorm = 0;
             if (m - sidestep - 1 >= 0)
             {
                 int from = m - sidestep - 1;
                 srcrenorm = renorm[fw][from];
-                fwbw[fw].col(m + sidestep) = fwbw[fw].col(from);
+                myfwbw.col(m + sidestep) = myfwbw.col(from);
                 if (!fw && getanyprior(from)) doemit(col, getprior(from), from);
                 dotransition(col, col, themap, from, step);
             }
@@ -413,7 +414,6 @@ void initinds()
         auto& hap = haplotypes[h];
         for (int fw = 0; fw < 2; fw++)
         {
-            hap.fwbw[fw].resize(haplotypes.size(), ourmap.chromposes.size());
             hap.renorm[fw].resize(ourmap.chromposes.size());
         }        
     }
