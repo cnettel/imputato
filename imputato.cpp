@@ -555,10 +555,10 @@ int main()
 {
     omp_set_max_active_levels(2);
     readdummy("human.map", "IMP.gen");
-    inds.resize(2);
     readrefs("REF.hap");
+    //inds.resize(2);
     initinds();
-    for (int k = 0; k < 500; k++)
+    for (int k = 0; k < 100; k++)
     {
         for (int i = 0; i < 2; i++)
         {
