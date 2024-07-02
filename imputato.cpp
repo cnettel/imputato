@@ -6,6 +6,7 @@
 #include <random>
 #include <numeric>
 #include <tuple>
+#include <math.h>
 
 using Eigen::ArrayXXf;
 using Eigen::ArrayXf;
@@ -20,7 +21,7 @@ struct map
     vector<double> chromposes;  
 } ourmap;
 
-float Ne = 4;
+float Ne = 1000;
 
 template<class column> void doemit(column& c, genprob& prior, int marker);
 
@@ -86,14 +87,14 @@ char& haplotype::getanyprior(int m) const
     return anypriors[m][(this - &haplotypes[0])];
 }
 
-
+int basehaps;
 
 template<class column> void doemit(column& c, genprob& prior, int marker)
 {
     vector<genprob>& ourPrior = priors[marker];
     vector<char>& ourAnyPrior = anypriors[marker];
     #pragma ivdep
-    for (int i = 0; i < haplotypes.size(); i++)
+    for (int i = 0; i < basehaps; i++)
     {
         float val = 0.0f;
         if (ourAnyPrior[i])
@@ -112,12 +113,12 @@ int basehaps;
 
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d)
 {
-    float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d;
-    float nonrec = expf(dist * -0.02 * Ne);
-    float rec = (1.0f - nonrec) / haplotypes.size();
+    float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d * -0.02 * Ne;
+    float nonrec = expf(dist);
+    float rec = -expm1f(dist) / haplotypes.size();
     float sum = c.sum();
 
-    c2 = c * nonrec + sum * rec;
+    c2(Eigen::seq(0, basehaps - 1)) = c(Eigen::seq(0, basehaps - 1)) * nonrec + sum * rec;
     c2(Eigen::seq(basehaps, haplotypes.size() - 1)) = 0;
 }
 
@@ -139,7 +140,7 @@ struct individ
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
     void doposteriorhaplotypes(int index);
-    std::tuple<int, int, float> findflip(int index);
+    std::tuple<int, int, double> findflip(int index);
     bool handleflip(int index);
 };
 
@@ -401,8 +402,8 @@ void individ::nudgehaplotypes(int index)
                 }
             }
 
-            float diff = (genotype ? probs[now][genotype - 1] : 0.f) - probs[now][genotype];
             auto& priors = haplotypes[index + m].getprior(i);
+            float diff = (genotype ? probs[now][genotype - 1] : 0.f) - probs[now][genotype];
             for (int j = 0; j < 2; j++)
             {
                 priors[j] *= expf(diff * (j == 1 ? 1 : -1) * 0.1);
@@ -418,9 +419,9 @@ void individ::nudgehaplotypes(int index)
             for (int j = 0; j < 2; j++)
             {
                 priors[j] *= sum;
+                priors[j] = std::clamp(priors[j], 1e-5f, 1-1e-5f);
             }
         }
-        if (i < 10) printf("\n");
     }
 }
 
@@ -437,6 +438,7 @@ void initinds()
 
     for (individ& ind : inds)
     {
+        ind.genotypes.resize(ourmap.chromposes.size());
         ind.samplehaplotypes(hapnum);
         hapnum += ploidy;
     }
