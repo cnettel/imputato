@@ -109,8 +109,6 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
     }
 }
 
-int basehaps;
-
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d)
 {
     float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d * -0.02 * Ne;
