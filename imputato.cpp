@@ -549,4 +549,36 @@ int main()
         doit();
     }
 
+    FILE* out = fopen("human.vcflike", "wt");
+    for (int m = 0; m < ourmap.chromposes.size(); m++)
+    {
+        for (int i = 0; i < inds.size(); i++)
+        {
+            for (int k = 0; k < ploidy; k++)
+            {
+                //fprintf(out, "%c%.2f", k ? '|' : '\t', haplotypes[basehaps + i * ploidy + k].getprior(m)[1]);
+                fprintf(out, "%c%.2f", k ? '|' : '\t', haplotypes[basehaps + i * ploidy + k].posterior[m][1]);
+            }
+        }
+        fprintf(out, "\n");
+    }
+    fclose(out);
+
+    out = fopen("human.out", "wt");
+    fprintf(out, "%d\n", inds.size());
+    for (int i = 0; i < inds.size(); i++)
+    {
+        for (int m = 0; m < ourmap.chromposes.size(); m++)
+        {
+            int allele = 0;        
+            for (int k = 0; k < ploidy; k++)
+            {
+                //fprintf(out, "%c%.2f", k ? '|' : '\t', haplotypes[basehaps + i * ploidy + k].getprior(m)[1]);
+                allele += ((bool) (int) (haplotypes[basehaps + i * ploidy + k].posterior[m][1] * 2));
+            }
+            fprintf(out, "%d ", allele);
+        }
+        fprintf(out, "\n");
+    }
+    fclose(out);
 }
