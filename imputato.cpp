@@ -17,7 +17,7 @@ using genprob = array<float, 2>;
 struct map
 {
     vector<int> chromstarts;
-    vector<float> chromposes;  
+    vector<double> chromposes;  
 } ourmap;
 
 float Ne = 4;
@@ -34,7 +34,7 @@ struct haplotype
     vector<genprob> posterior;
 
     ArrayXXf* fwbw;
-    vector<float> renorm[2];
+    vector<double> renorm[2];
     genprob& getprior(int m) const;
     char& getanyprior(int m) const;
 
@@ -54,7 +54,7 @@ struct haplotype
         for (int m = start; m != end; m += step)
         {
             auto col = myfwbw.col(m + sidestep);
-            float srcrenorm = 0;
+            double srcrenorm = 0;
             if (m - sidestep - 1 >= 0)
             {
                 int from = m - sidestep - 1;
@@ -69,7 +69,7 @@ struct haplotype
             sum += 1e-30;
             
             renorm[fw][m + sidestep] = srcrenorm + log(sum);
-            col *= exp(srcrenorm - renorm[fw][m + sidestep]);
+            col *= expf(srcrenorm - renorm[fw][m + sidestep]);
         }
     }
 };
