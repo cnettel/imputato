@@ -465,7 +465,6 @@ void doit()
         {
             for (int fw = 0; fw < 2; fw++)
             {
-                printf("TEST %d %d %d\n", i, k, fw);
                 hapnum = basehaps + i * ploidy;
                 haplotypes[hapnum + k].fwbw = fwbw[k];
                 individ& ind = inds[i];
@@ -478,7 +477,7 @@ void doit()
         bool flipped = ind.handleflip(hapnum);
         if (!flipped)
         {
-            printf("Nudge %d/%d\n", hapnum, haplotypes.size());
+            //printf("Nudge %d/%d\n", hapnum, haplotypes.size());
             ind.doposteriorhaplotypes(hapnum);
             ind.nudgehaplotypes(hapnum);
         }
