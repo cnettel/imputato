@@ -319,20 +319,20 @@ bool individ::handleflip(int index)
 void individ::doposteriorhaplotypes(int index)
 {
     ArrayXf probs;
-#pragma omp parallel for private(probs), collapse(2)    
+#pragma omp parallel for private(probs), collapse(2), schedule(dynamic, 1000)
     for (int j = 0; j < ploidy; j++)
     {
         for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
         {
             probs = haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + j].fwbw[0].col(m);
             haplotypes[index + j].posterior[m] = {0.0f, 0.0f};
-            for (int k = 0; k < haplotypes[index].fwbw[0].rows(); k++)
+            for (int k = 0; k < basehaps; k++)
             {
-                if (!haplotypes[k].getanyprior(k)) continue;
+                //if (!haplotypes[k].getanyprior(k)) continue;
 
                 for (int z = 0; z < 2; z++)
                 {
-                    haplotypes[index + j].posterior[m][z] += haplotypes[k].getprior(m)[z] * probs(k);
+                    haplotypes[index + j].posterior[m][z] += priors[m][k][z] * probs(k) * anypriors[m][k];
                 }
             }
 
@@ -353,7 +353,7 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic, 1000)
     for (int i = 0; i < genotypes.size(); i++)
     {
         if (genotypes[i] == -1) continue;
@@ -457,7 +457,7 @@ void doit()
     int hapnum = basehaps;
     ArrayXXf fwbw[ploidy][2];
 
-    #pragma omp parallel for num_threads(2), private(hapnum, fwbw)
+    #pragma omp parallel for num_threads(3), private(hapnum, fwbw)
     for (int i = 0; i < inds.size(); i++)
     {
         #pragma omp parallel for num_threads(ploidy * 2), collapse(2), private(hapnum)
