@@ -182,49 +182,79 @@ bool getploidyperm(int index, array<int, ploidy>& res)
     return true;
 }
 
-std::tuple<int, int, float> individ::findflip(int index)
+double likelihood;
+
+std::tuple<int, int, double> individ::findflip(int index)
 {
     int bestmarker = 0;
     int bestp = 0;
-    float bestscore = -std::numeric_limits<float>::infinity();
+    double bestscore = -1.1e30f;
 
-// TODO OPENMP
 // TODO LESS MEMORY
 
-    float scores[haplotypes[index].fwbw[0].cols()][permcount];
+    double scores[haplotypes[index].fwbw[0].cols()][permcount];
+    double firstscore = 0;
 
+    #pragma omp parallel for schedule(guided, 1000), shared(firstscore)
     for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
     {
         // TODO PRECALC ACCEL PLOIDY > 2
         bool first = true;
+        double firstthisscore = 0;
         for (int p = permcount; p >= 0; p--)
         {
             array<int, ploidy> perm;
-            if (!getploidyperm(p, perm)) continue;
-
-            if (first && m != 0)
+            if (!getploidyperm(p, perm))
             {
-                first = false;
+                scores[m][p] = -1.1e30f;
                 continue;
             }
+
+            /*if (first && m != 0)
+            {
+                scores[m][p] = -1.1e30f;
+                first = false;
+                continue;
+            }*/            
             
-            float sum = 0;
+            double sum = 0;
             #pragma ivdep
             for (int j = 0; j < ploidy; j++)
             {
-                sum += haplotypes[index + j].renorm[1][m];
-                sum += logf((haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + perm[j]].fwbw[0].col(m)).sum() + 1e-30f);
-                sum += haplotypes[index + perm[j]].renorm[0][m];
+                //sum += haplotypes[index + j].renorm[1][m];
+                sum += log((haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + perm[j]].fwbw[0].col(m)).sum() + 1e-30);
+                //sum += haplotypes[index + perm[j]].renorm[0][m];
             }
 
-            //if (index == 16) printf("Flip: %d %d %d %f\n", index, m, p, sum);
             if (first)
             {
+                if (m == 0)
+                {
+                    firstscore = sum;
+                    for (int j = 0; j < ploidy; j++)
+                    {
+                        firstscore += haplotypes[index + j].renorm[1][m];   
+                        firstscore += haplotypes[index + j].renorm[0][m];
+                    }
+                }
                 sum += 1.0;
+                firstthisscore = sum;
                 first = false;
             }
 
-            if (sum >= bestscore)
+            //if (index == 16) printf("Flip: %d %d %d %f\n", index, m, p, sum);
+            scores[m][p] = sum - firstthisscore;
+        }
+    }
+
+    for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
+    {
+        for (int p = permcount; p >= 0; p--)
+        {
+            double sum = scores[m][p];
+            if (sum < -1e30f) continue;
+
+            if (sum > bestscore)
             {
                 bestscore = sum;
                 bestp = p;
@@ -232,6 +262,8 @@ std::tuple<int, int, float> individ::findflip(int index)
             }
         }
     }    
+    #pragma omp atomic
+    likelihood += firstscore;
 
     return {bestmarker, bestp, bestscore};
 }
@@ -545,7 +577,8 @@ int main()
                 printf("\n");
             }
         }
-        printf("Test! %d\n", k);
+        printf("Test! %d %lf\n", k, likelihood);
+        likelihood = 0;
         doit();
     }
 
