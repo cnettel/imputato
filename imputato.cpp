@@ -388,8 +388,6 @@ void individ::nudgehaplotypes(int index)
 
         int genotype = genotypes[i];
 
-        if (i < 10 && index < 4) printf("T: %d", i);
-
         {float probs[2] = {0.f};
         for (int m = 0; m < ploidy; m++)
         {
