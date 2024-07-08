@@ -220,7 +220,7 @@ std::tuple<int, int, double> individ::findflip(int index)
     double scores[haplotypes[index].fwbw[0].cols()][permcount];
     double firstscore = 0;
 
-    #pragma omp parallel for schedule(guided, 1000), shared(firstscore)
+    #pragma omp parallel for schedule(guided, 100), shared(firstscore)
     for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
     {
         // TODO PRECALC ACCEL PLOIDY > 2
@@ -345,7 +345,7 @@ bool individ::handleflip(int index)
 void individ::doposteriorhaplotypes(int index)
 {
     ArrayXf probs;
-#pragma omp parallel for private(probs), collapse(2), schedule(dynamic, 1000)
+#pragma omp parallel for private(probs), collapse(2), schedule(dynamic, 100)
     for (int j = 0; j < ploidy; j++)
     {
         for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
@@ -379,7 +379,7 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
-#pragma omp parallel for schedule(dynamic, 1000)
+#pragma omp parallel for schedule(dynamic, 100)
     for (int i = 0; i < genotypes.size(); i++)
     {
         if (genotypes[i] == -1) continue;
