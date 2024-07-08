@@ -320,7 +320,7 @@ bool individ::handleflip(int index)
     {
         array<genprob, ploidy> prior;
         array<genprob, ploidy> posterior;
-        for (int i = bestmarker + 1; i < haplotypes[index].posterior.size(); i++)
+        for (int i = 0; i < haplotypes[index].posterior.size(); i++)
         {
             #pragma ivdep
             for (int j = 0; j < ploidy; j++)
