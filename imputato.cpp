@@ -591,15 +591,14 @@ void readrefs(const char* hapname)
 int main() 
 {
     omp_set_max_active_levels(2);
-    readdummy("human.map", "IMP.gen");
-    readrefs("REF.hap");
+    readdummy("potato_chr1.map", "potato_missing.gen");
     //inds.resize(2);
     initinds();
-    for (int k = 0; k < 100; k++)
+    for (int k = 0; k < 500; k++)
     {
         for (int i = 0; i < 2; i++)
         {
-            for (int j = 0; j < 5; j++)
+            for (int j = 0; j < 15; j++)
             {
                 printf("%d %d", i, j);
                 for (int k = 0; k < ploidy; k++)
@@ -619,7 +618,7 @@ int main()
         doit();
     }
 
-    FILE* out = fopen("human.vcflike", "wt");
+    FILE* out = fopen("potato.vcflike", "wt");
     for (int m = 0; m < ourmap.chromposes.size(); m++)
     {
         for (int i = 0; i < inds.size(); i++)
@@ -634,7 +633,7 @@ int main()
     }
     fclose(out);
 
-    out = fopen("human.out", "wt");
+    out = fopen("potato.out", "wt");
     fprintf(out, "%d\n", inds.size());
     for (int i = 0; i < inds.size(); i++)
     {
