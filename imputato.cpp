@@ -262,7 +262,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                         firstscore += haplotypes[index + j].renorm[0][m];
                     }
                 }
-                sum += 1.0;
+                sum += 0.01;
                 firstthisscore = sum;
                 first = false;
             }
@@ -305,6 +305,8 @@ bool individ::handleflip(int index)
     {
         straight &= perm[j] == j;
     }
+
+    straight |= std::bernoulli_distribution()(rng);
     if (!straight) 
     {
         printf("Found flip for haplotype base index %d, marker %d, bestp %d, best score %f\n", index, bestmarker, bestp, bestscore);
