@@ -21,7 +21,18 @@ struct map
     vector<double> chromposes;  
 } ourmap;
 
-float Ne = 1000;
+// Borrowed https://stackoverflow.com/questions/17719674/c11-fast-constexpr-integer-powers
+constexpr int64_t ipow_(int base, int exp){
+  return exp > 1 ? ipow_(base, (exp>>1) + (exp&1)) * ipow_(base, exp>>1) : base;
+}
+constexpr int64_t ipow(int base, int exp){
+  return exp < 1 ? 1 : ipow_(base, exp);
+}
+
+const constexpr float Ne = 37.5;
+const constexpr int ploidy = 4;
+const constexpr int permcount = ipow(ploidy, ploidy);
+float stepsize = 0.05;
 
 template<class column> void doemit(column& c, genprob& prior, int marker);
 
@@ -69,6 +80,11 @@ struct haplotype
             }
             if (fw && getanyprior(m + sidestep)) doemit(col, getprior(m + sidestep), m + sidestep);
 
+            for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
+            {
+                col(j) = 0;
+            }
+
             float sum = col.sum();
             sum += 1e-30;
             
@@ -107,7 +123,7 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
     vector<genprob>& ourPrior = priors[marker];
     vector<char>& ourAnyPrior = anypriors[marker];
     #pragma ivdep
-    for (int i = 0; i < basehaps; i++)
+    for (int i = 0; i < haplotypes.size(); i++)
     {
         float val = 0.0f;
         if (ourAnyPrior[i])
@@ -129,20 +145,9 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     float rec = -expm1f(dist) / haplotypes.size();
     float sum = c.sum();
 
-    c2(Eigen::seq(0, basehaps - 1)) = c(Eigen::seq(0, basehaps - 1)) * nonrec + sum * rec;
-    c2(Eigen::seq(basehaps, haplotypes.size() - 1)) = 0;
+    c2 = c * nonrec + sum * rec;
 }
 
-// Borrowed https://stackoverflow.com/questions/17719674/c11-fast-constexpr-integer-powers
-constexpr int64_t ipow_(int base, int exp){
-  return exp > 1 ? ipow_(base, (exp>>1) + (exp&1)) * ipow_(base, exp>>1) : base;
-}
-constexpr int64_t ipow(int base, int exp){
-  return exp < 1 ? 1 : ipow_(base, exp);
-}
-
-const constexpr int ploidy = 2;
-const constexpr int permcount = ipow(ploidy, ploidy);
 std::mt19937 rng;
 
 struct individ
@@ -339,7 +344,7 @@ void individ::doposteriorhaplotypes(int index)
         {
             probs = haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + j].fwbw[0].col(m);
             haplotypes[index + j].posterior[m] = {0.0f, 0.0f};
-            for (int k = 0; k < basehaps; k++)
+            for (int k = 0; k < haplotypes.size(); k++)
             {
                 //if (!haplotypes[k].getanyprior(k)) continue;
 
@@ -448,6 +453,8 @@ void initinds()
     int hapnum = haplotypes.size();
     basehaps = hapnum;
     haplotypes.resize(basehaps + inds.size() * ploidy);
+    priors.resize(ourmap.chromposes.size());
+    anypriors.resize(ourmap.chromposes.size());
     for (int i = 0; i < ourmap.chromposes.size(); i++)
     {
         priors[i].resize(haplotypes.size());
