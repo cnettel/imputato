@@ -530,11 +530,18 @@ void readdummy(const char* mapname, const char* genoname)
     fscanf(mapfile, "%d", &d);
 
     ourmap.chromposes.reserve(d);
+    double prev = -1.f;
     for (int i = 0; i < d; i++)
     {
-        float pos;
-        fscanf(mapfile, "%f", &pos);
+        double pos;
+        fscanf(mapfile, "%lf", &pos);
+        prev += 5e-5f;
+        if (pos < prev)
+        {
+            pos = prev;
+        }
         ourmap.chromposes.push_back(pos);
+        prev = pos;
     }
     ourmap.chromstarts.push_back(d);
 
