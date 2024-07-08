@@ -28,6 +28,7 @@ template<class column> void doemit(column& c, genprob& prior, int marker);
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d);
 
 vector<vector<genprob> > priors;
+vector<vector<genprob> > newpriors;
 vector<vector<char> > anypriors;
 
 struct haplotype
@@ -37,7 +38,9 @@ struct haplotype
     ArrayXXf* fwbw;
     vector<double> renorm[2];
     genprob& getprior(int m) const;
+    genprob& getnewprior(int m) const;
     char& getanyprior(int m) const;
+    int getindex() const;
 
     void dofwbw(bool fw, const map& themap)
     {
@@ -77,14 +80,24 @@ struct haplotype
 
 vector<haplotype> haplotypes;
 
+int haplotype::getindex() const
+{
+    return this - &haplotypes[0];
+}
+
 genprob& haplotype::getprior(int m) const
 {
-    return priors[m][(this - &haplotypes[0])];
+    return priors[m][getindex()];
+}
+
+genprob& haplotype::getnewprior(int m) const
+{
+    return newpriors[m][getindex()];
 }
 
 char& haplotype::getanyprior(int m) const
 {
-    return anypriors[m][(this - &haplotypes[0])];
+    return anypriors[m][getindex()];
 }
 
 int basehaps;
@@ -306,8 +319,9 @@ bool individ::handleflip(int index)
             #pragma ivdep
             for (int j = 0; j < ploidy; j++)
             {
-                haplotypes[index + j].getprior(i) = prior[perm[j]];
-                haplotypes[index + j].posterior[i] = posterior[perm[j]];
+                int permval = i > bestmarker ? perm[j] : j;
+                haplotypes[index + j].getnewprior(i) = prior[permval];
+                haplotypes[index + j].posterior[i] = posterior[permval];
             }
         }
     }
@@ -401,23 +415,29 @@ void individ::nudgehaplotypes(int index)
             }
 
             auto& priors = haplotypes[index + m].getprior(i);
-            float diff = (genotype ? probs[now][genotype - 1] : 0.f) - probs[now][genotype];
+            auto& newpriors = haplotypes[index + m].getnewprior(i);
+            float val1 = (genotype ? probs[now][genotype - 1] : 0.f);
+            float val2 = probs[now][genotype];
+            //float diff = (val1 - val2) / (val1 + val2);
+
+            float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
+            if (val1 + val2 < 1e-5f) printf("Stalemate at index %d, marker %d: %f, %f\n", index, i, val1, val2);
             for (int j = 0; j < 2; j++)
             {
-                priors[j] *= expf(diff * (j == 1 ? 1 : -1) * 0.1);
+                newpriors[j] = priors[j] * expf(diff * (j == 1 ? 1 : -1) * stepsize);
             }
 
             float sum = 0;
             for (int j = 0; j < 2; j++)
             {
-                sum += priors[j];
+                sum += newpriors[j];
             }
 
             sum = 1.f / sum;
             for (int j = 0; j < 2; j++)
             {
-                priors[j] *= sum;
-                priors[j] = std::clamp(priors[j], 1e-5f, 1-1e-5f);
+                newpriors[j] *= sum;
+                newpriors[j] = std::clamp(newpriors[j], 1e-10f, 1.f);
             }
         }
     }
@@ -449,11 +469,12 @@ void initinds()
             hap.renorm[fw].resize(ourmap.chromposes.size());
         }        
     }
+
+    newpriors = priors;
 }
 
 void doit()
 {
-    // TODO PRIOR SYNC
     int hapnum = basehaps;
     ArrayXXf fwbw[ploidy][2];
 
@@ -482,6 +503,8 @@ void doit()
             ind.nudgehaplotypes(hapnum);
         }
     }
+
+    priors = newpriors;
 }
 
 void readdummy(const char* mapname, const char* genoname)
