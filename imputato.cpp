@@ -133,6 +133,14 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
                 val += prior[j] * ourPrior[i][j];
             }
         }
+        else
+        {
+            /*for (int j = 0; j < 2; j++)
+            {
+                val += prior[j] * prior[j]; // Reasonable case is perfect match
+            }*/
+           val = 0.5;
+        }
 //        if (val < 0 || val > 1) printf("%f\n", val);
         c[i] *= val;
     }
