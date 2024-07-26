@@ -12,6 +12,9 @@ The code itself is found in `imputato.cpp`. This can be compiled with a a modern
 `-fopenmp -march=native` are highly recommended for parallelism and performance. Right now, the code is sort of hand tuned
 for the number of threads, but it should be possible to set environment variables to override.
 
+You also need to have Eigen installed (`libeigen3-dev` in Ubuntu). If it's a proper install on your setup, you might not need
+to specify any further include directory.
+
 At this point, the ploidy level (4 in this branch) and file names (`potato_chr1.map` and `potato_missing.gen`) are hard-coded
 in the source.
 
