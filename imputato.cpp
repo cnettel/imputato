@@ -434,13 +434,21 @@ void individ::nudgehaplotypes(int index)
             //float diff = (val1 - val2) / (val1 + val2);
 
             float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
+            float sum = val1 + val2;
             if (val1 + val2 < 1e-5f) printf("Stalemate at index %d, marker %d: %f, %f\n", index, i, val1, val2);
             for (int j = 0; j < 2; j++)
             {
-                newpriors[j] = priors[j] * expf(diff * (j == 1 ? 1 : -1) * stepsize);
+                float midpoint = ((j == 1) ? val1 : val2) / (sum);
+                double num = std::clamp<double>(priors[j], 1e-10, 1.);
+                double denom = std::clamp<double>(1.0 - priors[j], 1e-10, 1.);
+                double val = log(num/denom);
+                double step = 1.0 / (exp(val) + 1) + midpoint - 1.0;
+
+                val += step * sum * stepsize;
+                newpriors[j] = exp(val) / (exp(val) + 1.0);
             }
 
-            float sum = 0;
+            sum = 0;
             for (int j = 0; j < 2; j++)
             {
                 sum += newpriors[j];
