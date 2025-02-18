@@ -429,8 +429,8 @@ void individ::nudgehaplotypes(int index)
 
             auto& priors = haplotypes[index + m].getprior(i);
             auto& newpriors = haplotypes[index + m].getnewprior(i);
-            float val1 = (genotype ? probs[now][genotype - 1] : 0.f);
-            float val2 = probs[now][genotype];
+            float val1 = (genotype ? probs[now][genotype - 1] : 0.f) * priors[1];
+            float val2 = probs[now][genotype] * priors[0];
             //float diff = (val1 - val2) / (val1 + val2);
 
             float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
