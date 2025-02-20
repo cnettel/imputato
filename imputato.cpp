@@ -33,7 +33,7 @@ const constexpr float Ne = 37.5;
 const constexpr int ploidy = 4;
 const constexpr int maxreads = 20; 
 const constexpr int permcount = ipow(ploidy, ploidy);
-float stepsize = 0.05;
+float stepsize = 0.50;
 
 template<class column> void doemit(column& c, genprob& prior, int marker);
 
@@ -445,7 +445,7 @@ void individ::nudgehaplotypes(int index)
                     double val = log(num/denom);
                     double step = 1.0 / (exp(val) + 1) + midpoint - 1.0;
 
-                    val += step * sum * stepsize;
+                    val += step * stepsize;
                     newpriors[j] = exp(val) / (exp(val) + 1.0);
                 }
 
