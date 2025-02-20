@@ -162,7 +162,7 @@ std::mt19937 rng;
 struct individ
 {
     vector<int> genotypes;
-    vector<pair<int, int>> reads;
+    vector<std::pair<int, int>> reads;
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
     void doposteriorhaplotypes(int index);
@@ -390,25 +390,24 @@ void individ::nudgehaplotypes(int index)
         {
             int genotype = genotypes[i];
 
-            {float probs[2] = {0.f};
+            float probs[2] = {0.f};
             for (int m = 0; m < ploidy; m++)
             {
                 for (int l = 0; l < 2; l++)
-                {
-                    probs[l] += haplotypes[index + m].getprior(i)[l];
-                }
+                probs[l] += haplotypes[index + m].getprior(i)[l];
             }
 
             float sum = probs[0] + probs[1] + 1e-30f;
             probs[0] /= sum;
             probs[1] /= sum;
 
-            if (i < 10 && index < 4) printf(" %.3f/%.3f", probs[1]*ploidy, (float) genotype);}
-
+            if (i < 10 && index < 4) printf(" %.3f/%.3f", probs[1]*ploidy, (float) genotype);
 
             for (int m = 0; m < ploidy; m++)
             {
                 array<float, ploidy + 1> probs[2] = {{0.f}, {0.f}};
+                probs[0].fill(0.f);
+                probs[1].fill(0.f);
                 probs[1][0] = 1.f;
                 int now = 1;
                 for (int j = 0; j < ploidy; j++)
@@ -468,18 +467,24 @@ void individ::nudgehaplotypes(int index)
         if (reads[i].first + reads[i].second > 0)
         {
             auto reads = this->reads[i];
-            array<array<float, maxreads + 1>, maxreads + 1> data[2];
-            for (auto& row : data)
-            {
-                row.fill(0.f);
-            }
-            for (auto& row : data)
-            {
-                row.fill(0.f);
-            }
+            array<float, ploidy> data[2];
+            data[1].fill(0.f);
 
-            bool now = false;
-            data[0][0][0] = 1.0f;
+            bool now = true;
+            data[1][0][0] = 1.0f;
+            for (int j = 0; j < ploidy; j++)
+            {
+                if (j == m)
+                {
+                    continue;
+                }             
+                now = !now;
+                data[now].fill(0.f);
+
+                for (int k = 0; k < ploidy; k++)
+                {
+                }
+            }
         }
     }
 }
