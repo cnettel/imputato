@@ -31,6 +31,7 @@ constexpr int64_t ipow(int base, int exp){
 
 const constexpr float Ne = 37.5;
 const constexpr int ploidy = 4;
+const constexpr int maxreads = 20; 
 const constexpr int permcount = ipow(ploidy, ploidy);
 float stepsize = 0.05;
 
@@ -161,6 +162,7 @@ std::mt19937 rng;
 struct individ
 {
     vector<int> genotypes;
+    vector<pair<int, int>> reads;
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
     void doposteriorhaplotypes(int index);
@@ -384,82 +386,100 @@ void individ::nudgehaplotypes(int index)
 #pragma omp parallel for schedule(dynamic, 100)
     for (int i = 0; i < genotypes.size(); i++)
     {
-        if (genotypes[i] == -1) continue;
-
-        int genotype = genotypes[i];
-
-        {float probs[2] = {0.f};
-        for (int m = 0; m < ploidy; m++)
+        if (genotypes[i] != -1)
         {
-            for (int l = 0; l < 2; l++)
+            int genotype = genotypes[i];
+
+            {float probs[2] = {0.f};
+            for (int m = 0; m < ploidy; m++)
             {
-                probs[l] += haplotypes[index + m].getprior(i)[l];
-            }
-        }
-
-        float sum = probs[0] + probs[1] + 1e-30f;
-        probs[0] /= sum;
-        probs[1] /= sum;
-
-        if (i < 10 && index < 4) printf(" %.3f/%.3f", probs[1]*ploidy, (float) genotype);}
-
-
-        for (int m = 0; m < ploidy; m++)
-        {
-            array<float, ploidy + 1> probs[2] = {{0.f}, {0.f}};
-            probs[1][0] = 1.f;
-            int now = 1;
-            for (int j = 0; j < ploidy; j++)
-            {
-                if (j == m)
+                for (int l = 0; l < 2; l++)
                 {
-                    continue;
+                    probs[l] += haplotypes[index + m].getprior(i)[l];
                 }
-                now = !now;
-                std::fill(probs[now].begin(), probs[now].end(), 0.f);
-                for (int k = 0; k < ploidy; k++)
+            }
+
+            float sum = probs[0] + probs[1] + 1e-30f;
+            probs[0] /= sum;
+            probs[1] /= sum;
+
+            if (i < 10 && index < 4) printf(" %.3f/%.3f", probs[1]*ploidy, (float) genotype);}
+
+
+            for (int m = 0; m < ploidy; m++)
+            {
+                array<float, ploidy + 1> probs[2] = {{0.f}, {0.f}};
+                probs[1][0] = 1.f;
+                int now = 1;
+                for (int j = 0; j < ploidy; j++)
                 {
-                    float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
-                    for (int l = 0; l < 2 && k + l < ploidy; l++)
+                    if (j == m)
                     {
-                        probs[now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
+                        continue;
+                    }
+                    now = !now;
+                    std::fill(probs[now].begin(), probs[now].end(), 0.f);
+                    for (int k = 0; k < ploidy; k++)
+                    {
+                        float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
+                        for (int l = 0; l < 2 && k + l < ploidy; l++)
+                        {
+                            probs[now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
+                        }
                     }
                 }
+
+                auto& priors = haplotypes[index + m].getprior(i);
+                auto& newpriors = haplotypes[index + m].getnewprior(i);
+                float val1 = (genotype ? probs[now][genotype - 1] : 0.f) * priors[1];
+                float val2 = probs[now][genotype] * priors[0];
+                //float diff = (val1 - val2) / (val1 + val2);
+
+                float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
+                float sum = val1 + val2;
+                if (val1 + val2 < 1e-5f) printf("Stalemate at index %d, marker %d: %f, %f\n", index, i, val1, val2);
+                for (int j = 0; j < 2; j++)
+                {
+                    float midpoint = ((j == 1) ? val1 : val2) / (sum);
+                    double num = std::clamp<double>(priors[j], 1e-10, 1.);
+                    double denom = std::clamp<double>(1.0 - priors[j], 1e-10, 1.);
+                    double val = log(num/denom);
+                    double step = 1.0 / (exp(val) + 1) + midpoint - 1.0;
+
+                    val += step * sum * stepsize;
+                    newpriors[j] = exp(val) / (exp(val) + 1.0);
+                }
+
+                sum = 0;
+                for (int j = 0; j < 2; j++)
+                {
+                    sum += newpriors[j];
+                }
+
+                sum = 1.f / sum;
+                for (int j = 0; j < 2; j++)
+                {
+                    newpriors[j] *= sum;
+                    newpriors[j] = std::clamp(newpriors[j], 1e-10f, 1.f);
+                }
             }
-
-            auto& priors = haplotypes[index + m].getprior(i);
-            auto& newpriors = haplotypes[index + m].getnewprior(i);
-            float val1 = (genotype ? probs[now][genotype - 1] : 0.f) * priors[1];
-            float val2 = probs[now][genotype] * priors[0];
-            //float diff = (val1 - val2) / (val1 + val2);
-
-            float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
-            float sum = val1 + val2;
-            if (val1 + val2 < 1e-5f) printf("Stalemate at index %d, marker %d: %f, %f\n", index, i, val1, val2);
-            for (int j = 0; j < 2; j++)
+        }
+        else
+        if (reads[i].first + reads[i].second > 0)
+        {
+            auto reads = this->reads[i];
+            array<array<float, maxreads + 1>, maxreads + 1> data[2];
+            for (auto& row : data)
             {
-                float midpoint = ((j == 1) ? val1 : val2) / (sum);
-                double num = std::clamp<double>(priors[j], 1e-10, 1.);
-                double denom = std::clamp<double>(1.0 - priors[j], 1e-10, 1.);
-                double val = log(num/denom);
-                double step = 1.0 / (exp(val) + 1) + midpoint - 1.0;
-
-                val += step * sum * stepsize;
-                newpriors[j] = exp(val) / (exp(val) + 1.0);
+                row.fill(0.f);
             }
-
-            sum = 0;
-            for (int j = 0; j < 2; j++)
+            for (auto& row : data)
             {
-                sum += newpriors[j];
+                row.fill(0.f);
             }
 
-            sum = 1.f / sum;
-            for (int j = 0; j < 2; j++)
-            {
-                newpriors[j] *= sum;
-                newpriors[j] = std::clamp(newpriors[j], 1e-10f, 1.f);
-            }
+            bool now = false;
+            data[0][0][0] = 1.0f;
         }
     }
 }
