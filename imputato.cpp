@@ -162,7 +162,7 @@ std::mt19937 rng;
 struct individ
 {
     vector<int> genotypes;
-    vector<std::pair<int, int>> reads;
+    vector<array<int, 2>> reads;
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
     void doposteriorhaplotypes(int index);
@@ -464,7 +464,7 @@ void individ::nudgehaplotypes(int index)
             }
         }
         else
-        if (reads[i].first + reads[i].second > 0)
+        if (reads[i][0] + reads[i][1]> 0)
         {
             for (int m = 0; m < ploidy; m++)
             {
@@ -473,7 +473,7 @@ void individ::nudgehaplotypes(int index)
                 data[1].fill(0.f);
 
                 bool now = true;
-                data[1][0][0] = 1.0f;
+                data[1][0] = 1.0f;
                 for (int j = 0; j < ploidy; j++)
                 {
                     if (j == m)
@@ -485,6 +485,7 @@ void individ::nudgehaplotypes(int index)
 
                     for (int k = 0; k < ploidy; k++)
                     {
+                        float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
                         for (int n = 0; n < 2 && k + n < ploidy; n++)
                         {
                             data[now][k + n] = data[now][k] * haplotypes[index + j].posterior[i][n] / sum;
@@ -492,7 +493,27 @@ void individ::nudgehaplotypes(int index)
                     }
                 }
 
-                
+                double sums[2] = {0};
+                auto& priors = haplotypes[index + m].getprior(i);
+                auto& newpriors = haplotypes[index + m].getnewprior(i);
+                for (int j = 0; j < 2; j++)
+                {
+                    for (int a = 0; a < ploidy; a++)
+                    {
+                        double base = data[now][a];
+                        int counts[2] = {a, ploidy - a};
+                        counts[j]++;
+                        for (int k = 0; k < 2; k++)
+                        {
+                            for (int z = 0; z < reads[k]; z++)
+                            {
+                                base *= counts[k] * 0.5; // 0.5 just a tad of normalization
+                            }
+                        }
+                        sums[j] += base;
+                    }
+                    sums[j] *= priors[j];
+                }
             }
         }
     }
