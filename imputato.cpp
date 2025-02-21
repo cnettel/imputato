@@ -383,6 +383,39 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
+    auto updatenewpriors = [index] (int m, int i, float val1, float val2)
+    {
+        auto& priors = haplotypes[index + m].getprior(i);
+        auto& newpriors = haplotypes[index + m].getnewprior(i);
+        float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
+        float sum = val1 + val2;
+        //if (val1 + val2 < 1e-5f) printf("Stalemate at index %d, marker %d: %f, %f\n", index, i, val1, val2);
+        for (int j = 0; j < 2; j++)
+        {
+            float midpoint = ((j == 1) ? val1 : val2) / (sum);
+            double num = std::clamp<double>(priors[j], 1e-10, 1.);
+            double denom = std::clamp<double>(1.0 - priors[j], 1e-10, 1.);
+            double val = log(num/denom);
+            double step = 1.0 / (exp(val) + 1) + midpoint - 1.0;
+
+            val += step * stepsize;
+            newpriors[j] = exp(val) / (exp(val) + 1.0);
+        }
+
+        sum = 0;
+        for (int j = 0; j < 2; j++)
+        {
+            sum += newpriors[j];
+        }
+
+        sum = 1.f / sum;
+        for (int j = 0; j < 2; j++)
+        {
+            newpriors[j] *= sum;
+            newpriors[j] = std::clamp(newpriors[j], 1e-10f, 1.f);
+        }
+    };
+
 #pragma omp parallel for schedule(dynamic, 100)
     for (int i = 0; i < genotypes.size(); i++)
     {
@@ -429,38 +462,11 @@ void individ::nudgehaplotypes(int index)
                 }
 
                 auto& priors = haplotypes[index + m].getprior(i);
-                auto& newpriors = haplotypes[index + m].getnewprior(i);
                 float val1 = (genotype ? probs[now][genotype - 1] : 0.f) * priors[1];
                 float val2 = probs[now][genotype] * priors[0];
                 //float diff = (val1 - val2) / (val1 + val2);
 
-                float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
-                float sum = val1 + val2;
-                if (val1 + val2 < 1e-5f) printf("Stalemate at index %d, marker %d: %f, %f\n", index, i, val1, val2);
-                for (int j = 0; j < 2; j++)
-                {
-                    float midpoint = ((j == 1) ? val1 : val2) / (sum);
-                    double num = std::clamp<double>(priors[j], 1e-10, 1.);
-                    double denom = std::clamp<double>(1.0 - priors[j], 1e-10, 1.);
-                    double val = log(num/denom);
-                    double step = 1.0 / (exp(val) + 1) + midpoint - 1.0;
-
-                    val += step * stepsize;
-                    newpriors[j] = exp(val) / (exp(val) + 1.0);
-                }
-
-                sum = 0;
-                for (int j = 0; j < 2; j++)
-                {
-                    sum += newpriors[j];
-                }
-
-                sum = 1.f / sum;
-                for (int j = 0; j < 2; j++)
-                {
-                    newpriors[j] *= sum;
-                    newpriors[j] = std::clamp(newpriors[j], 1e-10f, 1.f);
-                }
+                updatenewpriors(m, i, val1, val2);
             }
         }
         else
@@ -514,6 +520,8 @@ void individ::nudgehaplotypes(int index)
                     }
                     sums[j] *= priors[j];
                 }
+
+                updatenewpriors(m, i, sums[0], sums[1]);
             }
         }
     }
