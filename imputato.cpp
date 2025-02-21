@@ -188,7 +188,7 @@ void individ::samplehaplotypes(int index)
                 int readsum = reads[i][0] + reads[i][1];
                 if (readsum)
                 {
-                    genotype = (reads[i][0] + 0.25) / (readsum + 0.5) * ploidy;
+                    genotype = (reads[i][1] + 0.25) / (readsum + 0.5) * ploidy;
                 }
             }
             if (genotype >= 0)
@@ -470,7 +470,7 @@ void individ::nudgehaplotypes(int index)
                     }
                 }
 
-                auto& priors = haplotypes[index + m].getprior(i);
+                auto& priors = haplotypes[index + m].getprior(i);                
                 float val1 = (genotype ? probs[now][genotype - 1] : 0.f) * priors[1];
                 float val2 = probs[now][genotype] * priors[0];
                 //float diff = (val1 - val2) / (val1 + val2);
@@ -636,7 +636,7 @@ void readdummy(const char* mapname, const char* genoname)
         std::fill(ind.reads.begin(), ind.reads.end(), std::array<int, 2>{0, 0});
         std::fill(ind.genotypes.begin(), ind.genotypes.end(), -1);
         for (int i = 0; i < d; i++)
-        {
+        {            
             char tmp[255];
             fscanf(indfile, "%s", tmp);
             int a, b;
@@ -691,7 +691,7 @@ void readrefs(const char* hapname)
 int main() 
 {
     omp_set_max_active_levels(2);
-    readdummy("potato_chr1.map", "potato_missing.gen");
+    readdummy("potato_chr1.map", "potato_reads.gen");
     //inds.resize(2);
     initinds();
     for (int k = 0; k < 500; k++)
