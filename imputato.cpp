@@ -182,9 +182,18 @@ void individ::samplehaplotypes(int index)
         haplotypes[index + j].posterior.resize(genotypes.size());
         for (int i = 0; i < genotypes.size(); i++)
         {
-            if (genotypes[i] >= 0)
+            double genotype = genotypes[i];
+            if (genotype < 0)
             {
-                float val = std::clamp((genotypes[i] / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
+                int readsum = reads[i][0] + reads[i][1];
+                if (readsum)
+                {
+                    genotype = (reads[i][0] + 0.25) / (readsum + 0.5) * ploidy;
+                }
+            }
+            if (genotype >= 0)
+            {
+                float val = std::clamp<float>((genotype / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
                 haplotypes[index + j].getprior(i)[0] = 1.0f - val;
                 haplotypes[index + j].getprior(i)[1] = val;
                 haplotypes[index + j].getanyprior(i) = true;
@@ -623,9 +632,22 @@ void readdummy(const char* mapname, const char* genoname)
     for (individ& ind : inds)
     {
         ind.genotypes.resize(d);
-        for (int& g : ind.genotypes)
+        ind.reads.resize(d);
+        std::fill(ind.reads.begin(), ind.reads.end(), std::array<int, 2>{0, 0});
+        std::fill(ind.genotypes.begin(), ind.genotypes.end(), -1);
+        for (int i = 0; i < d; i++)
         {
-            fscanf(indfile, "%d", &g);
+            char tmp[255];
+            fscanf(indfile, "%s", tmp);
+            int a, b;
+            if (sscanf(tmp, "%d;%d", &a, &b) == 2 && a >= 0 && b >= 0)
+            {
+                ind.reads[i]= {a, b};
+            }
+            else if (sscanf(tmp, "%d", &a) == 1)
+            {
+                ind.genotypes[i] = a;
+            }
         }
     }
 }
