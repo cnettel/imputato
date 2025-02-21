@@ -421,9 +421,9 @@ void individ::nudgehaplotypes(int index)
                     for (int k = 0; k < ploidy; k++)
                     {
                         float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
-                        for (int l = 0; l < 2 && k + l < ploidy; l++)
+                        for (int n = 0; n < 2 && k + n < ploidy; n++)
                         {
-                            probs[now][k + l] += probs[!now][k] * haplotypes[index + j].posterior[i][l] / sum;
+                            probs[now][k + n] += probs[!now][k] * haplotypes[index + j].posterior[i][n] / sum;
                         }
                     }
                 }
@@ -466,24 +466,33 @@ void individ::nudgehaplotypes(int index)
         else
         if (reads[i].first + reads[i].second > 0)
         {
-            auto reads = this->reads[i];
-            array<float, ploidy> data[2];
-            data[1].fill(0.f);
-
-            bool now = true;
-            data[1][0][0] = 1.0f;
-            for (int j = 0; j < ploidy; j++)
+            for (int m = 0; m < ploidy; m++)
             {
-                if (j == m)
-                {
-                    continue;
-                }             
-                now = !now;
-                data[now].fill(0.f);
+                auto reads = this->reads[i];
+                array<float, ploidy> data[2];
+                data[1].fill(0.f);
 
-                for (int k = 0; k < ploidy; k++)
+                bool now = true;
+                data[1][0][0] = 1.0f;
+                for (int j = 0; j < ploidy; j++)
                 {
+                    if (j == m)
+                    {
+                        continue;
+                    }             
+                    now = !now;
+                    data[now].fill(0.f);
+
+                    for (int k = 0; k < ploidy; k++)
+                    {
+                        for (int n = 0; n < 2 && k + n < ploidy; n++)
+                        {
+                            data[now][k + n] = data[now][k] * haplotypes[index + j].posterior[i][n] / sum;
+                        }
+                    }
                 }
+
+                
             }
         }
     }
