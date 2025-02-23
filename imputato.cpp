@@ -502,20 +502,19 @@ void individ::nudgehaplotypes(int index)
                         float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
                         for (int n = 0; n < 2 && k + n < ploidy; n++)
                         {
-                            data[now][k + n] = data[now][k] * haplotypes[index + j].posterior[i][n] / sum;
+                            data[now][k + n] += data[!now][k] * haplotypes[index + j].posterior[i][n] / sum;
                         }
                     }
                 }
 
                 double sums[2] = {0};
                 auto& priors = haplotypes[index + m].getprior(i);
-                auto& newpriors = haplotypes[index + m].getnewprior(i);
                 for (int j = 0; j < 2; j++)
                 {
                     for (int a = 0; a < ploidy; a++)
                     {
                         double base = data[now][a];
-                        int counts[2] = {a, ploidy - a};
+                        int counts[2] = {ploidy - 1 - a, a};
                         counts[j]++;
                         for (int k = 0; k < 2; k++)
                         {
@@ -526,10 +525,7 @@ void individ::nudgehaplotypes(int index)
                         }
                         sums[j] += base;
                     }
-                    sums[j] *= priors[j];
-                }
-
-                updatenewpriors(m, i, sums[0], sums[1]);
+                updatenewpriors(m, i, sums[1], sums[0]);
             }
         }
     }
