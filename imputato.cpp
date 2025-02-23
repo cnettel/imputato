@@ -228,16 +228,15 @@ std::tuple<int, int, double> individ::findflip(int index)
 
 // TODO LESS MEMORY
 
-    double scores[haplotypes[index].fwbw[0].cols()][permcount];
-    double firstscore = 0;
+    double scores[haplotypes[index].fwbw[0].cols()][permcount];    
 
-    #pragma omp parallel for schedule(guided, 100), shared(firstscore)
+    #pragma omp parallel for schedule(guided, 100)
     for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
     {
         // TODO PRECALC ACCEL PLOIDY > 2
         bool first = true;
         double firstthisscore = 0;
-        for (int p = permcount; p >= 0; p--)
+        for (int p = permcount - 1; p >= 0; p--)
         {
             array<int, ploidy> perm;
             if (!getploidyperm(p, perm))
@@ -266,12 +265,14 @@ std::tuple<int, int, double> individ::findflip(int index)
             {
                 if (m == 0)
                 {
-                    firstscore = sum;
+                    double firstscore = sum;
                     for (int j = 0; j < ploidy; j++)
                     {
                         firstscore += haplotypes[index + j].renorm[1][m];   
                         firstscore += haplotypes[index + j].renorm[0][m];
                     }
+                    #pragma omp atomic
+                    likelihood += firstscore;
                 }
                 sum += 0.01;
                 firstthisscore = sum;
@@ -285,7 +286,7 @@ std::tuple<int, int, double> individ::findflip(int index)
 
     for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
     {
-        for (int p = permcount; p >= 0; p--)
+        for (int p = permcount - 1; p >= 0; p--)
         {
             double sum = scores[m][p];
             if (sum < -1e30f) continue;
@@ -298,8 +299,6 @@ std::tuple<int, int, double> individ::findflip(int index)
             }
         }
     }    
-    #pragma omp atomic
-    likelihood += firstscore;
 
     return {bestmarker, bestp, bestscore};
 }
