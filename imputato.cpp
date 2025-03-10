@@ -712,7 +712,7 @@ int main()
     readdummy("potato_chr1.map", "potato_reads.gen");
     //inds.resize(2);
     initinds();
-    for (int k = 0; k < 500; k++)
+    for (int k = 0; k < 1000; k++)
     {
         for (int i = 0; i < 2; i++)
         {
