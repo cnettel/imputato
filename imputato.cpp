@@ -391,36 +391,40 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
-    auto updatenewpriors = [index] (int m, int i, float val1, float val2)
+    auto updatenewpriors = [this, index] (int i, array<float, ploidy>& ratio)
     {
-        auto& priors = haplotypes[index + m].getprior(i);
-        auto& newpriors = haplotypes[index + m].getnewprior(i);
-        float diff = logf((val1 + 1e-30f) / (val2 + 1e-30f));
-        float sum = val1 + val2;
-        //if (val1 + val2 < 1e-5f) printf("Stalemate at index %d, marker %d: %f, %f\n", index, i, val1, val2);
-        for (int j = 0; j < 2; j++)
+        array<double, ploidy> val, step;
+        double abssum = 0;
+        double plainsum = 0;
+        for (int m = 0; m < ploidy; m++)
         {
-            float midpoint = ((j == 1) ? val1 : val2) / (sum);
-            double num = std::clamp<double>(priors[j], 1e-10, 1.);
-            double denom = std::clamp<double>(1.0 - priors[j], 1e-10, 1.);
-            double val = log(num/denom);
-            double step = 1.0 / (exp(val) + 1) + midpoint - 1.0;
+            auto& priors = haplotypes[index + m].getprior(i);
 
-            val += step * stepsize;
-            newpriors[j] = exp(val) / (exp(val) + 1.0);
+            float midpoint = ratio[m];
+            double num = std::clamp<double>(priors[0], 1e-10, 1.);
+            double denom = std::clamp<double>(1.0 - priors[0], 1e-10, 1.);
+            val[m] = log(num/denom);
+            step[m] = 1.0 / (exp(val[m]) + 1) + midpoint - 1.0;
+            if (index == 0 && i == 3) printf("\n %d %d %d %lf %lf\n", index, m, i, val[m], step[m]);
+
+            abssum += fabs(step[m]);
+            plainsum += step[m];
         }
 
-        sum = 0;
-        for (int j = 0; j < 2; j++)
+        plainsum = fabs(plainsum) + 1e-10f;
+        
+        for (int m = 0; m < ploidy; m++)
         {
-            sum += newpriors[j];
-        }
+            auto& newpriors = haplotypes[index + m].getnewprior(i);
+            //step[m] = step[m] * (abssum / plainsum) + (step[m] - plainsum / ploidy) * (abssum / plainsum); 
+            step[m] = std::clamp(step[m], -1.0, 1.0);
 
-        sum = 1.f / sum;
-        for (int j = 0; j < 2; j++)
-        {
-            newpriors[j] *= sum;
-            newpriors[j] = std::clamp(newpriors[j], 1e-10f, 1.f);
+            val[m] += step[m] * stepsize * (reads[i][0] + reads[i][1]); // TODO: Needs to handle non-read count as well
+            for (int j = 0; j < 2; j++)
+            {
+                newpriors[j] = exp(val[m]) / (exp(val[m]) + 1.0);
+                if (j) newpriors[j] = 1.0 - newpriors[j];
+            }
         }
     };
 
@@ -474,12 +478,13 @@ void individ::nudgehaplotypes(int index)
                 float val2 = probs[now][genotype] * priors[0];
                 //float diff = (val1 - val2) / (val1 + val2);
 
-                updatenewpriors(m, i, val1, val2);
+                //updatenewpriors(m, i, val1, val2);
             }
         }
         else
         if (reads[i][0] + reads[i][1]> 0)
         {
+            array<float, ploidy> ratio;
             for (int m = 0; m < ploidy; m++)
             {
                 auto reads = this->reads[i];
@@ -518,15 +523,33 @@ void individ::nudgehaplotypes(int index)
                         counts[j]++;
                         for (int k = 0; k < 2; k++)
                         {
-                            for (int z = 0; z < reads[k]; z++)
+                            if (reads[k] && !counts[k])
                             {
-                                base *= counts[k] * 0.5; // 0.5 just a tad of normalization
+                                base *= 0;
+                                continue;
+                            }
+
+                            int opts = reads[k] + counts[k] - 1;
+                            // counts[k] groups, counts[k] -1 sentinel elements identifying borders
+                            for (int z = 0; z < counts[k] - 1; z++)
+                            {
+                                base *= opts - z;
+                                base /= counts[k] - 1 - z;
                             }
                         }
                         sums[j] += base;
                     }
-                updatenewpriors(m, i, sums[1], sums[0]);
+                    sums[j] *= priors[j];
+                    //sums[j] *= haplotypes[index + m].posterior[i][j];                    
+                }
+
+                if (index == 0 && m == 0 && i == 11)
+                {
+                    printf("\n DATA: %lf %lf\t%f %f %f %f\t%f %f\n", sums[0], sums[1], data[now][0], data[now][1], data[now][2], data[now][3], haplotypes[index + 0].posterior[i][0], haplotypes[index + 0].posterior[i][1]);
+                }
+                ratio[m] = sums[0] / (sums[0] + sums[1] + 1e-30f);
             }
+            updatenewpriors(i, ratio);
         }
     }
 }
