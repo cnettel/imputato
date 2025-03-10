@@ -33,15 +33,15 @@ const constexpr float Ne = 37.5;
 const constexpr int ploidy = 4;
 const constexpr int maxreads = 20; 
 const constexpr int permcount = ipow(ploidy, ploidy);
-float stepsize = 0.50;
+float stepsize = 0.20;
 
-template<class column> void doemit(column& c, genprob& prior, int marker);
+template<class column> void doemit(column& c, float& anyprior, genprob& prior, int marker);
 
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d);
 
 vector<vector<genprob> > priors;
 vector<vector<genprob> > newpriors;
-vector<vector<char> > anypriors;
+vector<vector<float> > anypriors;
 
 struct haplotype
 {
@@ -51,7 +51,7 @@ struct haplotype
     vector<double> renorm[2];
     genprob& getprior(int m) const;
     genprob& getnewprior(int m) const;
-    char& getanyprior(int m) const;
+    float& getanyprior(int m) const;
     int getindex() const;
 
     void dofwbw(bool fw, const map& themap)
@@ -76,10 +76,10 @@ struct haplotype
                 int from = m - sidestep - 1;
                 srcrenorm = renorm[fw][from];
                 myfwbw.col(m + sidestep) = myfwbw.col(from);
-                if (!fw && getanyprior(from)) doemit(col, getprior(from), from);
+                if (!fw && getanyprior(from)) doemit(col, getanyprior(from), getprior(from), from);
                 dotransition(col, col, themap, from, step);
             }
-            if (fw && getanyprior(m + sidestep)) doemit(col, getprior(m + sidestep), m + sidestep);
+            if (fw && getanyprior(m + sidestep)) doemit(col, getanyprior(m + sidestep), getprior(m + sidestep), m + sidestep);
 
             for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
             {
@@ -112,17 +112,17 @@ genprob& haplotype::getnewprior(int m) const
     return newpriors[m][getindex()];
 }
 
-char& haplotype::getanyprior(int m) const
+float& haplotype::getanyprior(int m) const
 {
     return anypriors[m][getindex()];
 }
 
 int basehaps;
 
-template<class column> void doemit(column& c, genprob& prior, int marker)
+template<class column> void doemit(column& c, float& anyprior, genprob& prior, int marker)
 {
     vector<genprob>& ourPrior = priors[marker];
-    vector<char>& ourAnyPrior = anypriors[marker];
+    vector<float>& ourAnyPrior = anypriors[marker];
     #pragma ivdep
     for (int i = 0; i < haplotypes.size(); i++)
     {
@@ -132,16 +132,12 @@ template<class column> void doemit(column& c, genprob& prior, int marker)
             for (int j = 0; j < 2; j++)
             {
                 val += prior[j] * ourPrior[i][j];
-            }
+            }            
         }
-        else
-        {
-            /*for (int j = 0; j < 2; j++)
-            {
-                val += prior[j] * prior[j]; // Reasonable case is perfect match
-            }*/
-           val = 0.5;
-        }
+        
+        float anyPriorW = /*anyprior * */ourAnyPrior[i] ? 1.0f : 0.0f;
+        val *= anyPriorW;
+        val += 0.5f * (1.0f - anyPriorW);
 //        if (val < 0 || val > 1) printf("%f\n", val);
         c[i] *= val;
     }
@@ -188,15 +184,19 @@ void individ::samplehaplotypes(int index)
                 int readsum = reads[i][0] + reads[i][1];
                 if (readsum)
                 {
-                    genotype = (reads[i][1] + 0.25) / (readsum + 0.5) * ploidy;
+                    genotype = (reads[i][1] + (ploidy - 1) * 0.5) / (readsum + ploidy - 1) * ploidy;
+                    haplotypes[index + j].getanyprior(i) = 1.0f - powf(powf(0.5, 1.0f / ploidy), readsum);
                 }
+            }
+            else
+            {
+                haplotypes[index + j].getanyprior(i) = true;
             }
             if (genotype >= 0)
             {
                 float val = std::clamp<float>((genotype / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
                 haplotypes[index + j].getprior(i)[0] = 1.0f - val;
-                haplotypes[index + j].getprior(i)[1] = val;
-                haplotypes[index + j].getanyprior(i) = true;
+                haplotypes[index + j].getprior(i)[1] = val;                
             }
         }
     }
