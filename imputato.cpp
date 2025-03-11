@@ -126,20 +126,18 @@ template<class column> void doemit(column& c, float& anyprior, genprob& prior, i
     #pragma ivdep
     for (int i = 0; i < haplotypes.size(); i++)
     {
-        float val = 0.0f;
-        if (ourAnyPrior[i])
+        float old = c[i * 2] + c[i * 2 + 1];
+        for (int j = 0; j < 2; j++)
         {
-            for (int j = 0; j < 2; j++)
-            {
-                val += prior[j] * ourPrior[i][j];
-            }            
-        }
-        
-        float anyPriorW = /*anyprior * */ourAnyPrior[i] ? 1.0f : 0.0f;
-        val *= anyPriorW;
-        val += 0.5f * (1.0f - anyPriorW);
+            float val = 0.f;
+            val += prior[j] * ourPrior[i][j];
+            
+            float anyPriorW = /*anyprior * */ourAnyPrior[i] ? 1.0f : 0.0f;
+            val *= anyPriorW;
+            val += 0.5f * (1.0f - anyPriorW);
+            c[i * 2 + j] = old * val;
 //        if (val < 0 || val > 1) printf("%f\n", val);
-        c[i] *= val;
+        }
     }
 }
 
@@ -149,8 +147,14 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     float nonrec = expf(dist);
     float rec = -expm1f(dist) / haplotypes.size();
     float sum = c.sum();
-
-    c2 = c * nonrec + sum * rec;
+    for (int i = 0; i < haplotypes.size(); i++)
+    {
+        float old = c[i * 2] + c[i * 2 + 1];
+        for (int j = 0; j < 2; j++)
+        {
+            c2[i + j] = old * nonrec + sum * rec;            
+        }
+    }
 }
 
 std::mt19937 rng;
@@ -602,7 +606,7 @@ void doit()
                 hapnum = basehaps + i * ploidy;
                 haplotypes[hapnum + k].fwbw = fwbw[k];
                 individ& ind = inds[i];
-                haplotypes[hapnum + k].fwbw[fw].resize(haplotypes.size(), ourmap.chromposes.size());
+                haplotypes[hapnum + k].fwbw[fw].resize(haplotypes.size() * 2, ourmap.chromposes.size());
                 haplotypes[hapnum + k].dofwbw(fw, ourmap);
             }
         }
