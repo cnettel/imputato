@@ -83,7 +83,8 @@ struct haplotype
 
             for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
             {
-                col(j) = 0;
+                col(j * 2) = 0;
+                col(j * 2 + 1) = 0;
             }
 
             float sum = col.sum();
@@ -152,7 +153,7 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
         float old = c[i * 2] + c[i * 2 + 1];
         for (int j = 0; j < 2; j++)
         {
-            c2[i + j] = old * nonrec + sum * rec;            
+            c2[i * 2 + j] = old * nonrec + sum * rec;            
         }
     }
 }
@@ -371,10 +372,10 @@ void individ::doposteriorhaplotypes(int index)
             for (int k = 0; k < haplotypes.size(); k++)
             {
                 //if (!haplotypes[k].getanyprior(k)) continue;
-                float weight = priors[m][k][0] * priors[m][k][0] + priors[m][k][1] * priors[m][k][1];
+                //float weight = priors[m][k][0] * priors[m][k][0] + priors[m][k][1] * priors[m][k][1];
                 for (int z = 0; z < 2; z++)
                 {
-                    haplotypes[index + j].posterior[m][z] += priors[m][k][z] * weight * probs(k) * anypriors[m][k];
+                    haplotypes[index + j].posterior[m][z] += probs(k * 2 + z);
                 }
             }
 
