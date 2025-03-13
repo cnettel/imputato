@@ -481,14 +481,15 @@ void individ::nudgehaplotypes(int index)
                     {
                         continue;
                     }
+                    auto& priors = haplotypes[index + m].getprior(i);
                     now = !now;
                     std::fill(probs[now].begin(), probs[now].end(), 0.f);
                     for (int k = 0; k < ploidy; k++)
                     {
-                        float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
+                        //float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
                         for (int n = 0; n < 2 && k + n < ploidy; n++)
                         {
-                            probs[now][k + n] += probs[!now][k] * haplotypes[index + j].posterior[i][n] / sum;
+                            probs[now][k + n] += probs[!now][k] * priors[n] /** haplotypes[index + j].posterior[i][n] / sum*/;
                         }
                     }
                 }
@@ -522,12 +523,13 @@ void individ::nudgehaplotypes(int index)
                     now = !now;
                     data[now].fill(0.f);
 
+                    auto& priors = haplotypes[index + j].getprior(i);
                     for (int k = 0; k < ploidy; k++)
                     {
-                        float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
+                        //float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
                         for (int n = 0; n < 2 && k + n < ploidy; n++)
                         {
-                            data[now][k + n] += data[!now][k] * haplotypes[index + j].posterior[i][n] / sum;
+                            data[now][k + n] += data[!now][k] * /*priors[n]*/haplotypes[index + j].posterior[i][n] /*/ sum*/;
                         }
                     }
                 }
