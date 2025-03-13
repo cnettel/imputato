@@ -418,7 +418,7 @@ void individ::nudgehaplotypes(int index)
         double plainsum = 0;
         for (int m = 0; m < ploidy; m++)
         {
-            auto& priors = haplotypes[index + m].getprior(i);
+            auto& priors = haplotypes[index + m].getnewprior(i);
 
             float midpoint = ratio[m];
             double num = std::clamp<double>(priors[0], 1e-10, 1.);
