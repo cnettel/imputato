@@ -562,7 +562,7 @@ void individ::nudgehaplotypes(int index)
                         sums[j] += base;
                     }
                     //sums[j] *= priors[j];
-                    sums[j] *= haplotypes[index + m].posterior[i][j];                    
+                    //sums[j] *= haplotypes[index + m].posterior[i][j];                    
                 }
 
                 if (index == 0 && m == 0 && i == 11)
