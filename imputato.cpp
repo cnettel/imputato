@@ -572,6 +572,12 @@ void individ::nudgehaplotypes(int index)
                 ratio[m] = sums[0] / (sums[0] + sums[1] + 1e-30f);
             }
             updatenewpriors(i, ratio);
+            for (int m = 0; m < ploidy; m++)
+            {
+                ratio[m] = haplotypes[index + m].posterior[i][0];
+            }
+            updatenewpriors(i, ratio);
+            updatenewpriors(i, ratio);
         }
     }
 }
