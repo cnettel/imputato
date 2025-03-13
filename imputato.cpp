@@ -135,7 +135,7 @@ template<class column> void doemit(column& c, float& anyprior, genprob& prior, i
             
             float anyPriorW = /*anyprior * */ourAnyPrior[i] ? 1.0f : 0.0f;
             val *= anyPriorW;
-            val += 0.5f * (1.0f - anyPriorW);
+            val += 0.5f * (1.0f - anyPriorW) * prior[j];            
             c[i * 2 + j] = old * val;
 //        if (val < 0 || val > 1) printf("%f\n", val);
         }
