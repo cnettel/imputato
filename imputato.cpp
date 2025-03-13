@@ -439,7 +439,7 @@ void individ::nudgehaplotypes(int index)
             //step[m] = step[m] * (abssum / plainsum) + (step[m] - plainsum / ploidy) * (abssum / plainsum); 
             step[m] = std::clamp(step[m], -1.0, 1.0);
 
-            val[m] += step[m] * stepsize * (reads[i][0] + reads[i][1]); // TODO: Needs to handle non-read count as well
+            val[m] += step[m] * stepsize /** (reads[i][0] + reads[i][1])*/; // TODO: Needs to handle non-read count as well
             for (int j = 0; j < 2; j++)
             {
                 newpriors[j] = exp(val[m]) / (exp(val[m]) + 1.0);
