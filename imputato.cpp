@@ -181,6 +181,7 @@ void individ::samplehaplotypes(int index)
     for (int j = 0; j < ploidy; j++)
     {        
         haplotypes[index + j].posterior.resize(genotypes.size());
+        bool first = true;
         for (int i = 0; i < genotypes.size(); i++)
         {
             double genotype = genotypes[i];
@@ -198,10 +199,24 @@ void individ::samplehaplotypes(int index)
                 haplotypes[index + j].getanyprior(i) = true;
             }
             if (genotype >= 0)
-            {
+            {                
                 float val = std::clamp<float>((genotype / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
                 haplotypes[index + j].getprior(i)[0] = 1.0f - val;
                 haplotypes[index + j].getprior(i)[1] = val;                
+                if (first && genotype >= 1 && genotype <= ploidy - 1 && (j == 0 || j == ploidy - 1))
+                {
+                    first = false;
+
+                    float a = 1.0f - 1e-5f;
+                    float b = 1e-5f;
+                    if (j == ploidy - 1)
+                    {
+                        std::swap(a, b);
+                    }
+
+                    haplotypes[index + j].getprior(i)[0] = a;
+                    haplotypes[index + j].getprior(i)[1] = b;
+                }
             }
         }
     }
