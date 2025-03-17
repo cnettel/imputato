@@ -78,10 +78,10 @@ struct haplotype
                 int from = m - sidestep - 1;
                 srcrenorm = renorm[fw][from];
                 myfwbw.col(m + sidestep) = myfwbw.col(from);
-                if (!fw && getanyprior(from)) doemit(col, getanyprior(from), getprior(from), from);
+                if (!fw /*&& getanyprior(from)*/) doemit(col, getanyprior(from), getprior(from), from);
                 dotransition(col, col, themap, from, step);
             }
-            if (fw && getanyprior(m + sidestep)) doemit(col, getanyprior(m + sidestep), getprior(m + sidestep), m + sidestep);
+            if (fw /*&& getanyprior(m + sidestep)*/) doemit(col, getanyprior(m + sidestep), getprior(m + sidestep), m + sidestep);
 
             for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
             {
@@ -133,11 +133,11 @@ template<class column> void doemit(column& c, float& anyprior, genprob& prior, i
         for (int j = 0; j < 2; j++)
         {
             float val = 0.f;
-            val += prior[j] * ourPrior[i][j];
+            val += (anyprior ? prior[j] : 1.0f) * ourPrior[i][j];
             
             float anyPriorW = /*anyprior * */ourAnyPrior[i] ? 1.0f : 0.0f;
             val *= anyPriorW;
-            val += 0.5f * (1.0f - anyPriorW) * prior[j];            
+            val += 0.5f * (1.0f - anyPriorW) * (anyprior ? prior[j] : 1.0f);
             c[i * 2 + j] = old * val;
 //        if (val < 0 || val > 1) printf("%f\n", val);
         }
