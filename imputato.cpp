@@ -458,14 +458,15 @@ void individ::nudgehaplotypes(int index)
         for (int m = 0; m < ploidy; m++)
         {
             auto& newpriors = haplotypes[index + m].getnewprior(i);
+            if (newpriors[0] == 0 || newpriors[1] == 0) continue;
             //step[m] = step[m] * (abssum / plainsum) + (step[m] - plainsum / ploidy) * (abssum / plainsum); 
             step[m] = std::clamp(step[m], -1.0, 1.0);
 
             val[m] += step[m] * stepsize /** (reads[i][0] + reads[i][1])*/; // TODO: Needs to handle non-read count as well
             for (int j = 0; j < 2; j++)
             {
-                newpriors[j] = exp(val[m]) / (exp(val[m]) + 1.0);
-                if (j) newpriors[j] = 1.0 - newpriors[j];
+                newpriors[j] = std::clamp(exp(val[m] * (j ? -1 : 1)) / (exp(val[m] * (j ? -1 : 1)) + 1.0), 1e-3, 1 - 1e-3);
+                //if (j) newpriors[j] = 1.0 - newpriors[j];
             }
         }
     };
