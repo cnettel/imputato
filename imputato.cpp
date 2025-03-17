@@ -47,6 +47,7 @@ vector<vector<float> > anypriors;
 struct haplotype
 {
     vector<genprob> posterior;
+    vector<float> offset;
 
     ArrayXXf* fwbw;
     vector<double> renorm[2];
@@ -177,15 +178,17 @@ vector<individ> inds;
 void individ::samplehaplotypes(int index)
 {
     // Very crude, biased
-    std::uniform_real_distribution<float> distribution(0.99,1.01); 
+    std::uniform_real_distribution<float> distribution(-0.1, 0.1);
 
     for (int j = 0; j < ploidy; j++)
     {        
         haplotypes[index + j].posterior.resize(genotypes.size());
+        haplotypes[index + j].offset.resize(genotypes.size());
         bool first = true;
         for (int i = 0; i < genotypes.size(); i++)
         {
             double genotype = genotypes[i];
+            bool any = false;
             if (genotype < 0)
             {
                 int readsum = reads[i][0] + reads[i][1];
@@ -194,22 +197,25 @@ void individ::samplehaplotypes(int index)
                     genotype = (reads[i][1] + (ploidy - 1) * 0.5) / (readsum + ploidy - 1) * ploidy;
                     haplotypes[index + j].getanyprior(i) = 1.0f - powf(powf(0.5, 1.0f / ploidy), readsum);
                 }
+                any = reads[i][0] && reads[i][1];
             }
             else
             {
                 haplotypes[index + j].getanyprior(i) = true;
+                any = genotype >= 1 && genotype <= ploidy - 1;
             }
             if (genotype >= 0)
             {                
-                float val = std::clamp<float>((genotype / 1.0f / ploidy) * distribution(rng), 1e-5f, 1 - 1e-5f);
+                haplotypes[index + j].offset[i] = distribution(rng);
+                float val = std::clamp<float>((genotype / 1.0f / ploidy) * (1.0f + haplotypes[index + j].offset[i]), 1e-5f, 1 - 1e-5f);
                 haplotypes[index + j].getprior(i)[0] = 1.0f - val;
                 haplotypes[index + j].getprior(i)[1] = val;                
-                if (first && genotype >= 1 && genotype <= ploidy - 1 && (j == 0 || j == ploidy - 1))
+                if (first && any && (j == 0 || j == ploidy - 1))
                 {
                     first = false;
 
-                    float a = 1.0f - 1e-5f;
-                    float b = 1e-5f;
+                    float a = 1.0f;
+                    float b = 0.f;
                     if (j == ploidy - 1)
                     {
                         std::swap(a, b);
@@ -353,6 +359,7 @@ bool individ::handleflip(int index)
     {
         array<genprob, ploidy> prior;
         array<genprob, ploidy> posterior;
+        array<float, ploidy> offset;
         for (int i = 0; i < haplotypes[index].posterior.size(); i++)
         {
             #pragma ivdep
@@ -360,6 +367,7 @@ bool individ::handleflip(int index)
             {
                 prior[j] = haplotypes[index + j].getprior(i);
                 posterior[j] = haplotypes[index + j].posterior[i];
+                offset[j] = haplotypes[index + j].offset[i];
             }
 
             #pragma ivdep
@@ -368,6 +376,7 @@ bool individ::handleflip(int index)
                 int permval = i > bestmarker ? perm[j] : j;
                 haplotypes[index + j].getnewprior(i) = prior[permval];
                 haplotypes[index + j].posterior[i] = posterior[permval];
+                haplotypes[index + j].offset[i] = offset[permval];
             }
         }
     }
@@ -423,9 +432,9 @@ void individ::nudgehaplotypes(int index)
 
             float midpoint = ratio[m];
             double num = std::clamp<double>(priors[0], 1e-10, 1.);
-            double denom = std::clamp<double>(1.0 - priors[0], 1e-10, 1.);
+            double denom = std::clamp<double>(priors[1], 1e-10, 1.);
             val[m] = log(num/denom);
-            step[m] = 1.0 / (exp(val[m]) + 1) + midpoint - 1.0;
+            step[m] = 1.0 / (exp(val[m]) + 1) + midpoint - 1.0 + haplotypes[index + m].offset[i];
             if (index == 0 && i == 3) printf("\n %d %d %d %lf %lf\n", index, m, i, val[m], step[m]);
 
             abssum += fabs(step[m]);
@@ -759,6 +768,7 @@ int main()
 
                 for (int k = 0; k < ploidy; k++)
                 {
+                    printf("\t% 01.3f ", haplotypes[basehaps + i * ploidy + k].offset[j]);
                     if (!burnin) haplotypes[basehaps + i * ploidy + k].offset[j] *= 0.995;
                 }
                 printf("\n");
