@@ -33,7 +33,8 @@ const constexpr float Ne = 37.5;
 const constexpr int ploidy = 4;
 const constexpr int maxreads = 20; 
 const constexpr int permcount = ipow(ploidy, ploidy);
-float stepsize = 0.20;
+float stepsize = 0.05 / 3;
+bool burnin = false;
 
 template<class column> void doemit(column& c, float& anyprior, genprob& prior, int marker);
 
@@ -529,7 +530,7 @@ void individ::nudgehaplotypes(int index)
                         //float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
                         for (int n = 0; n < 2 && k + n < ploidy; n++)
                         {
-                            data[now][k + n] += data[!now][k] * /*priors[n]*/haplotypes[index + j].posterior[i][n] /*/ sum*/;
+                            data[now][k + n] += data[!now][k] * (burnin ? priors[n] : haplotypes[index + j].posterior[i][n]) /*/ /* sum*/;
                         }
                     }
                 }
@@ -561,8 +562,8 @@ void individ::nudgehaplotypes(int index)
                         }
                         sums[j] += base;
                     }
-                    //sums[j] *= priors[j];
-                    //sums[j] *= haplotypes[index + m].posterior[i][j];                    
+                    //if (!burnin) sums[j] *= priors[j];
+                    if (!burnin) sums[j] *= haplotypes[index + m].posterior[i][j];                    
                 }
 
                 if (index == 0 && m == 0 && i == 11)
@@ -572,12 +573,15 @@ void individ::nudgehaplotypes(int index)
                 ratio[m] = sums[0] / (sums[0] + sums[1] + 1e-30f);
             }
             updatenewpriors(i, ratio);
+            /*if (!burnin)
+            {
             for (int m = 0; m < ploidy; m++)
             {
                 ratio[m] = haplotypes[index + m].posterior[i][0];
             }
             updatenewpriors(i, ratio);
             updatenewpriors(i, ratio);
+            }*/
         }
     }
 }
@@ -631,16 +635,16 @@ void doit()
                 haplotypes[hapnum + k].fwbw = fwbw[k];
                 individ& ind = inds[i];
                 haplotypes[hapnum + k].fwbw[fw].resize(haplotypes.size() * 2, ourmap.chromposes.size());
-                haplotypes[hapnum + k].dofwbw(fw, ourmap);
+                if (!burnin) haplotypes[hapnum + k].dofwbw(fw, ourmap);
             }
         }
         hapnum = basehaps + i * ploidy;
         individ& ind = inds[i];
-        bool flipped = ind.handleflip(hapnum);
+        bool flipped = !burnin && ind.handleflip(hapnum);
         if (!flipped)
         {
             //printf("Nudge %d/%d\n", hapnum, haplotypes.size());
-            ind.doposteriorhaplotypes(hapnum);
+            if (!burnin) ind.doposteriorhaplotypes(hapnum);
             ind.nudgehaplotypes(hapnum);
         }
     }
@@ -742,6 +746,7 @@ int main()
     initinds();
     for (int k = 0; k < 1000; k++)
     {
+        burnin = k < 100;
         for (int i = 0; i < 2; i++)
         {
             for (int j = 0; j < 15; j++)
@@ -754,11 +759,12 @@ int main()
 
                 for (int k = 0; k < ploidy; k++)
                 {
-                    printf("\t\t%.3f %.3f ", haplotypes[basehaps + i * ploidy + k].posterior[j][1], haplotypes[basehaps + i * ploidy + k].posterior[j][0]);
+                    if (!burnin) haplotypes[basehaps + i * ploidy + k].offset[j] *= 0.995;
                 }
                 printf("\n");
             }
         }
+        if (!burnin) stepsize *= 1.002;
         printf("Test! %d %lf\n", k, likelihood);
         likelihood = 0;
         doit();
