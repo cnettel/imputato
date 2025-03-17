@@ -442,6 +442,18 @@ void individ::nudgehaplotypes(int index)
         }
 
         plainsum = fabs(plainsum) + 1e-10f;
+
+        for (int m = 0; m < ploidy; m++)
+        {
+            for (int n = 0; n < ploidy; n++)
+            {
+                if (m == n) continue;
+                if (val[m] < 0 && step[m] - haplotypes[index + m].offset[i] < 0 && val[n] > 0 && step[n] - haplotypes[index + n].offset[i] > 0 && haplotypes[index + m].offset[i] > haplotypes[index + n].offset[i])
+                {
+                    std::swap(haplotypes[index + m].offset[i], haplotypes[index + n].offset[i]);
+                }
+            }
+        }
         
         for (int m = 0; m < ploidy; m++)
         {
