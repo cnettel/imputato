@@ -779,6 +779,13 @@ int main()
                     printf("\t%.3f %.3f", haplotypes[basehaps + i * ploidy + k].getprior(j)[1], haplotypes[basehaps + i * ploidy + k].getprior(j)[0]);
                 }
 
+                printf("\t");
+                for (int k = 0; k < ploidy; k++)
+                {
+                    printf("\t%.3f %.3f ", haplotypes[basehaps + i * ploidy + k].posterior[j][1], haplotypes[basehaps + i * ploidy + k].posterior[j][0]);
+                }
+
+                printf("\t");
                 for (int k = 0; k < ploidy; k++)
                 {
                     printf("\t% 01.3f ", haplotypes[basehaps + i * ploidy + k].offset[j]);
