@@ -310,7 +310,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                     #pragma omp atomic
                     likelihood += firstscore;
                 }
-                sum += 0.01;
+                sum += 0.001;
                 firstthisscore = sum;
                 first = false;
             }
