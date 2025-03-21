@@ -151,16 +151,16 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     float nonrec = expf(dist);
     float rec = -expm1f(dist) / haplotypes.size();
     float sum = c.sum();
-    float subsum;
+    float subsum = 0;
     int prevbase = -1;
     for (int i = 0; i < haplotypes.size(); i++)
     {
-        int base = i / ploidy * ploidy;
+/*        int base = i / ploidy * ploidy;
         if (base != prevbase)
         {
             subsum = c(Eigen::seq(base * 2, (base + ploidy) * 2 - 1)).sum();
             prevbase = base;
-        }
+        }*/
         float old = c[i * 2] + c[i * 2 + 1];
         for (int j = 0; j < 2; j++)
         {
