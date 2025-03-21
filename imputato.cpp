@@ -693,7 +693,7 @@ void readdummy(const char* mapname, const char* genoname)
     {
         double pos;
         fscanf(mapfile, "%lf", &pos);
-        prev += 5e-5f;
+        prev += 5e-3f;
         if (pos < prev)
         {
             pos = prev;
