@@ -772,9 +772,16 @@ int main(int argc, char** argv)
     readdummy("potato_chr1.map", "potato_reads.gen");
     //inds.resize(2);
     initinds();
-    for (int k = 0; k < 1000; k++)
+    double origstepsize = stepsize;
+    burnin = true;
+    stepsize = 0.1;
+    for (int k = 0; k < 2000; k++)
     {
-        burnin = k < 100;
+        if (k == 100)
+    {
+            burnin = false;
+            stepsize = origstepsize;
+        }
         for (int i = 0; i < 2; i++)
         {
             for (int j = 0; j < 15; j++)
