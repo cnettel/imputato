@@ -402,15 +402,9 @@ void individ::doposteriorhaplotypes(int index)
         for (int m = 0; m < haplotypes[index].fwbw[0].cols(); m++)
         {
             probs = haplotypes[index + j].fwbw[1].col(m) * haplotypes[index + j].fwbw[0].col(m);
-            haplotypes[index + j].posterior[m] = {0.0f, 0.0f};
-            for (int k = 0; k < haplotypes.size(); k++)
-            {
-                //if (!haplotypes[k].getanyprior(k)) continue;
-                //float weight = priors[m][k][0] * priors[m][k][0] + priors[m][k][1] * priors[m][k][1];
                 for (int z = 0; z < 2; z++)
                 {
-                    haplotypes[index + j].posterior[m][z] += probs(k * 2 + z);
-                }
+                haplotypes[index + j].posterior[m][z] = probs(Eigen::seq(z, haplotypes.size() * 2 - 1, 2)).sum();
             }
 
             float sum = 1e-30f;
