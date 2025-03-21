@@ -433,7 +433,10 @@ void individ::nudgehaplotypes(int index)
         {
             auto& priors = haplotypes[index + m].getnewprior(i);
 
-            float midpoint = ratio[m];
+            double midpoint = ratio[m];
+            midpoint = log(midpoint) - log(1 - midpoint);
+            midpoint *= ploidy * 0.5;
+            midpoint = exp(midpoint) / (1 + exp(midpoint));
             double num = std::clamp<double>(priors[0], 1e-10, 1.);
             double denom = std::clamp<double>(priors[1], 1e-10, 1.);
             val[m] = log(num/denom);
