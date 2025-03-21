@@ -766,7 +766,7 @@ void readrefs(const char* hapname)
     }
 }
 
-int main() 
+int main(int argc, char** argv) 
 {
     omp_set_max_active_levels(2);
     readdummy("potato_chr1.map", "potato_reads.gen");
@@ -805,8 +805,11 @@ int main()
         likelihood = 0;
         doit();
     }
+    char filename[255];
+    const char* letter = argv[1];
 
-    FILE* out = fopen("potato.vcflike", "wt");
+    sprintf(filename, "potato%s.vcflike", letter);
+    FILE* out = fopen(filename, "wt");
     for (int m = 0; m < ourmap.chromposes.size(); m++)
     {
         for (int i = 0; i < inds.size(); i++)
@@ -821,7 +824,8 @@ int main()
     }
     fclose(out);
 
-    out = fopen("potato.out", "wt");
+    sprintf(filename, "potato%s.out", letter);
+    out = fopen(filename, "wt");
     fprintf(out, "%d\n", inds.size());
     for (int i = 0; i < inds.size(); i++)
     {
