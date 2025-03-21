@@ -440,7 +440,7 @@ void individ::nudgehaplotypes(int index)
             double num = std::clamp<double>(priors[0], 1e-10, 1.);
             double denom = std::clamp<double>(priors[1], 1e-10, 1.);
             val[m] = log(num/denom);
-            step[m] = 1.0 / (exp(val[m]) + 1) + midpoint - 1.0 + haplotypes[index + m].offset[i];
+            step[m] = 1.0 / (exp(val[m]) + 1) + midpoint - 1.0;
             if (index == 0 && i == 3) printf("\n %d %d %d %lf %lf\n", index, m, i, val[m], step[m]);
 
             abssum += fabs(step[m]);
@@ -468,7 +468,7 @@ void individ::nudgehaplotypes(int index)
             //step[m] = step[m] * (abssum / plainsum) + (step[m] - plainsum / ploidy) * (abssum / plainsum); 
             step[m] = std::clamp(step[m], -1.0, 1.0);
 
-            val[m] += step[m] * stepsize /** (reads[i][0] + reads[i][1])*/; // TODO: Needs to handle non-read count as well
+            val[m] += (step[m] + haplotypes[index + m].offset[i]) * (reads[i][0] + reads[i][1]) * stepsize; // TODO: Needs to handle non-read count as well
             for (int j = 0; j < 2; j++)
             {
                 newpriors[j] = std::clamp(exp(val[m] * (j ? -1 : 1)) / (exp(val[m] * (j ? -1 : 1)) + 1.0), 1e-3, 1 - 1e-3);
