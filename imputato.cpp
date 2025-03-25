@@ -454,7 +454,7 @@ void individ::nudgehaplotypes(int index)
             for (int n = 0; n < ploidy; n++)
             {
                 if (m == n) continue;
-                if (val[m] < 0 && step[m] - haplotypes[index + m].offset[i] < 0 && val[n] > 0 && step[n] - haplotypes[index + n].offset[i] > 0 && haplotypes[index + m].offset[i] > haplotypes[index + n].offset[i])
+                if (val[m] < 0 && step[m] < 0 && val[n] > 0 && step[n] > 0 && haplotypes[index + m].offset[i] > haplotypes[index + n].offset[i])
                 {
                     std::swap(haplotypes[index + m].offset[i], haplotypes[index + n].offset[i]);
                 }
@@ -467,8 +467,9 @@ void individ::nudgehaplotypes(int index)
             if (newpriors[0] == 0 || newpriors[1] == 0) continue;
             //step[m] = step[m] * (abssum / plainsum) + (step[m] - plainsum / ploidy) * (abssum / plainsum); 
             step[m] = std::clamp(step[m], -1.0, 1.0);
+            double centered = 2 * std::min(newpriors[0], newpriors[1]);
 
-            val[m] += (step[m] + haplotypes[index + m].offset[i]) * (reads[i][0] + reads[i][1]) * stepsize; // TODO: Needs to handle non-read count as well
+            val[m] += (step[m] + centered * haplotypes[index + m].offset[i]) * (reads[i][0] + reads[i][1]) * stepsize; // TODO: Needs to handle non-read count as well
             for (int j = 0; j < 2; j++)
             {
                 newpriors[j] = std::clamp(exp(val[m] * (j ? -1 : 1)) / (exp(val[m] * (j ? -1 : 1)) + 1.0), 1e-3, 1 - 1e-3);
