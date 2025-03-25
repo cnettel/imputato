@@ -434,8 +434,8 @@ void individ::nudgehaplotypes(int index)
             auto& priors = haplotypes[index + m].getnewprior(i);
 
             double midpoint = ratio[m];
-            midpoint = log(midpoint) - log(1 - midpoint);
-            midpoint *= ploidy * 0.5;
+            midpoint = log(std::clamp<double>(midpoint, 1e-10, 1.)) - log(std::clamp<double>(1 - midpoint, 1e-10, 1.));
+            if (burnin) midpoint *= ploidy / ploidy;
             midpoint = exp(midpoint) / (1 + exp(midpoint));
             double num = std::clamp<double>(priors[0], 1e-10, 1.);
             double denom = std::clamp<double>(priors[1], 1e-10, 1.);
