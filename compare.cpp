@@ -29,6 +29,8 @@ int main(int argc, char** argv)
     int totmismatch = 0;
     int totdisconc = 0;
     int totmissing = 0;
+    int totse = 0;
+
     for (int i = 0; i < n; i++)
     {
         for (int j = 0; j < 2; j++)
@@ -41,6 +43,7 @@ int main(int argc, char** argv)
         int mismatches = 0;
         int missing = 0;
         int disconc = 0;
+        int se = 0;
 
         while (true)
         {
@@ -54,25 +57,30 @@ int main(int argc, char** argv)
                     if (tot < 10) fprintf(stderr, "Stopping at %d, %s\n", i, tlf[i]);
                     ok = false;
                 }
+                //if (i == 1 && genos[i] != -1) genos[i] = 4 - genos[i];
                 tlf2[i] += pos;
             }
 
             if (!ok) break;
             tot++;
+            //if (tot > 200) break;
             if (genos[0] == -1 || genos[1] == -1) missing++;
             else
             {
                 mismatches += genos[0] != genos[1];
                 disconc += abs(genos[0] - genos[1]);
+                se += abs(genos[0] - genos[1]) * abs(genos[0] - genos[1]);
             }
         }
 
-        printf("Ind %d: %d/%d (%d missing, %d disconc)\n", i, mismatches, tot, missing, disconc);
+        printf("Ind %d: %d/%d (%d missing, %d disconc, %d se)\n", i, mismatches, tot, missing, disconc, se);
         totmismatch += mismatches;
         totmissing += missing;
         totdisconc += disconc;
+        totse += se;
     }
     printf("Tot mismatches: %d\n", totmismatch);
     printf("Tot missing: %d\n", totmissing);
     printf("Tot disconc: %d\n", totdisconc);
+    printf("Tot sq.err: %d\n", totse);
 }
