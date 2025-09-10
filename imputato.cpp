@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <numeric>
 #include <array>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <vector>
 #include <random>
 #include <numeric>
