@@ -21,6 +21,7 @@ struct map
 {
     vector<int> chromstarts;
     vector<double> chromposes;  
+    vector<float> otherepses;
 } ourmap;
 
 // Borrowed https://stackoverflow.com/questions/17719674/c11-fast-constexpr-integer-powers
@@ -31,9 +32,9 @@ constexpr int64_t ipow(int base, int exp){
   return exp < 1 ? 1 : ipow_(base, exp);
 }
 
-float Ne = 375;
-const constexpr float Neend = 2.0;
-const constexpr float Nedecay = 0.98;
+float Ne = 750;
+const constexpr float Neend = 1.0;
+const constexpr float Nedecay = 0.99;
 const constexpr float Nestep = 0.0f;
 const constexpr bool newNed = false;
 const constexpr int ploidy = 4;
@@ -47,7 +48,7 @@ bool burnin = false;
 
 template<class column> void doemit(column& c, float& anyprior, genprob& prior, int marker, int* indices);
 
-template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d);
+template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d, int index);
 
 vector<vector<genprob> > priors;
 vector<vector<genprob> > newpriors;
@@ -55,7 +56,7 @@ vector<vector<float> > anypriors;
 vector<vector<float> > newanypriors;
 
 constexpr bool disableplacement = true;
-constexpr bool disableperm = false;
+constexpr bool disableperm = true;
 constexpr bool permpostburnin = false;
 constexpr bool altperm = false;
 constexpr bool mulpriorrest = true;
@@ -89,7 +90,7 @@ constexpr double offsetdecay = 1.000;
 constexpr bool fillinmissingwo = true;
 constexpr bool neutralmissing = false;
 constexpr bool noanypriorweight = true;
-constexpr bool updallpriors = true;
+constexpr bool updallpriors = false;
 constexpr bool simplestep = false;
 constexpr bool modifiedclamp = false;
 constexpr bool domaxcentered = true;
@@ -103,7 +104,7 @@ constexpr bool priorpowo = true; // powoorig makes more sense
 constexpr bool mixorig  = false;
 constexpr bool postorig = false;
 constexpr bool expklsim = false;
-constexpr bool extremsim = true;
+constexpr bool extremsim = false;
 constexpr bool invcs = false;
 constexpr bool simpowo = false;
 constexpr double midpointcap = 30;
@@ -201,6 +202,22 @@ constexpr bool scaleanyprior = false;
 constexpr bool wounc = false;
 constexpr bool scaleanypriorw = true;
 constexpr bool nocshz = false;
+constexpr bool onlyref = true;
+constexpr float epsothergeno = 0 * 0.005 / (ploidy - 1);
+constexpr bool domarkeps = true;
+constexpr bool uncnogeno = true;
+constexpr float epsiloncM = 5e-3f;
+constexpr bool halfpar = false;
+constexpr bool fixatone = false;
+constexpr float offsmagn = 0.1;
+constexpr float filterlevel = 1.0f;
+constexpr float refeps = 1e-10f;
+constexpr bool weakeneps = true;
+constexpr bool rewcsdiff = false;
+constexpr float updeps = 1e-5f;
+constexpr bool filterrefs = true;
+constexpr bool mulsimoffset = true;
+constexpr bool halfparinit = true;
 
 struct haplotype
 {
@@ -211,6 +228,7 @@ struct haplotype
     vector<float> desired;
     vector<float> offset;
     vector<float> momentum;
+    array<int, 8>* allowedrefs = nullptr;
 
     ArrayXXf* fwbw;
     vector<double> renorm[2];
@@ -245,7 +263,7 @@ struct haplotype
                 srcrenorm = renorm[fw][from];
                 myfwbw.col(m + sidestep) = myfwbw.col(from);
                 if (!fw /*&& getanyprior(from)*/) doemit(col, getanyprior(from), getprior(from), from, indices);
-                dotransition(col, col, themap, from, step);
+                dotransition(col, col, themap, from, step, getindex());
             }
 
             if (fw /*&& getanyprior(m + sidestep)*/)
@@ -374,10 +392,16 @@ void sortibd2b(ArrayXf& probs, std::array<ArrayXXf*, N> first, std::array<ArrayX
     double minlevelibd = ::minlevelibd * (mulminibd ? N : 1);
     double sum = 0;
     float max = 0;
-    int groupcount = haplotypes.size() / ibdgroupsize;
+    int groupcount = (haplotypes.size() - basehaps) / ibdgroupsize;
     ysums.resize(groupcount);
     factors.resize(groupcount);
     probs.resize(first[0]->col(m).size());
+    for (int x = 0; x < basehaps * 2; x++)
+    {
+        probs[x] = first[0]->col(m)[x] * second[0]->col(m)[x];
+        sum += probs[x];
+    }
+    double basesum = sum;
     for (int x = 0; x < groupcount; x++)
     {
         if (!alreadyfactor) indices[x] = 0;
@@ -387,23 +411,23 @@ void sortibd2b(ArrayXf& probs, std::array<ArrayXXf*, N> first, std::array<ArrayX
         if (!alreadyfactor) factors[x] = 1.0f;
         for (int k = 0; k < ibdgroupsize * 2; k++)
         {
-            float firstprob = first[0]->col(m)[x * ibdgroupsize * 2 + k];
-            float secondprob = second[0]->col(m)[x * ibdgroupsize * 2 + k];
+            float firstprob = first[0]->col(m)[basehaps * 2 + x * ibdgroupsize * 2 + k];
+            float secondprob = second[0]->col(m)[basehaps * 2 + x * ibdgroupsize * 2 + k];
             for (int i = 1; i < N; i++)
             {
                 if (!ibdmax)
                 {
-                    firstprob += first[i]->col(m)[x * ibdgroupsize * 2 + k];
-                    secondprob += second[i]->col(m)[x * ibdgroupsize * 2 + k];
+                    firstprob += first[i]->col(m)[basehaps * 2 + x * ibdgroupsize * 2 + k];
+                    secondprob += second[i]->col(m)[basehaps * 2 + x * ibdgroupsize * 2 + k];
                 }
                 else
                 {
-                    firstprob = std::max(firstprob, first[i]->col(m)[x * ibdgroupsize * 2 + k]);
-                    secondprob = std::max(secondprob, second[i]->col(m)[x * ibdgroupsize * 2 + k]);
+                    firstprob = std::max(firstprob, first[i]->col(m)[basehaps * 2 + x * ibdgroupsize * 2 + k]);
+                    secondprob = std::max(secondprob, second[i]->col(m)[basehaps * 2 + x * ibdgroupsize * 2 + k]);
                 }
             }
             float prob = firstprob * secondprob;
-            probs[x * ibdgroupsize * 2 + k] = prob * (alreadyfactor ? factors[x] : 1);
+            probs[basehaps * 2 + x * ibdgroupsize * 2 + k] = prob * (alreadyfactor ? factors[x] : 1);
             if (!alreadyfactor)
             {
                 if (antigroup)
@@ -551,7 +575,7 @@ void sortibd2b(ArrayXf& probs, std::array<ArrayXXf*, N> first, std::array<ArrayX
         if (nodropysum) sum2 += ysums[x] * factors[x];
         if (!nodropysum) sum -= ysum;    
     }
-    if (nodropysum) sum = sum2;
+    if (nodropysum) sum = sum2 + basesum;
     rerun &= anyunchanged;
     } while (rerun);
 
@@ -559,7 +583,7 @@ void sortibd2b(ArrayXf& probs, std::array<ArrayXXf*, N> first, std::array<ArrayX
     {
         for (int k = 0; k < ibdgroupsize * 2; k++)
         {
-            probs[x * ibdgroupsize * 2 + k] *= factors[x];
+            probs[basehaps * 2 + x * ibdgroupsize * 2 + k] *= factors[x];
         }
     }
     
@@ -748,12 +772,15 @@ template<class column> void doemit(column& c, float& anyprior, genprob& prior, i
     }
 }
 
-template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d)
+template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d, int index)
 {
     // Careful! c and c2 might coincide
     float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d * -0.02 * Ne;
     float nonrec = expf(dist);
-    float rec = -expm1f(dist) / haplotypes.size();
+    int actualSize = haplotypes.size();
+    if (onlyref) actualSize = basehaps;
+    if (halfpar) actualSize -= basehaps / 2;
+    float rec = -expm1f(dist) / actualSize;
     float sum = c.sum();
     float subsum = 0;
     float subunc = 0;
@@ -789,9 +816,27 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
             }
         }
         float old = c[i * 2] + c[i * 2 + 1];
+        bool filter = (onlyref && i >= basehaps);
+        if (halfpar) filter |= (i < basehaps) && (((index - basehaps) % ploidy < ploidy / 2) ^ (i < basehaps / 2));
+        if (filterrefs && i < basehaps)
+        {
+            bool ok = false;
+            if (haplotypes[index].allowedrefs)
+            {
+                for (int ref : *haplotypes[index].allowedrefs)
+                {
+                    if (ref == i)
+                    {
+                        ok = true;
+                        break;
+                    }
+                }
+            }
+            filter |= !ok;
+        }
         for (int j = 0; j < 2; j++)
         {
-            c2[i * 2 + j] = (old * (certf + (1 - certf) * (killibd2trans ? (killibd2unc ? subunc : std::max(old, subsum - old) / (subsum + 1e-30f)) : 1 ))) * nonrec + sum * rec;            
+            c2[i * 2 + j] = (1.0f - (filter ? filterlevel : 0)) * ((old * (certf + (1 - certf) * (killibd2trans ? (killibd2unc ? subunc : std::max(old, subsum - old) / (subsum + 1e-30f)) : 1 ))) * nonrec + sum * rec);
         }
     }
 }
@@ -802,6 +847,15 @@ struct individ
 {
     vector<int> genotypes;
     vector<array<int, 2>> reads;
+    array<int, 8> allowedrefs;
+
+    individ()
+    {
+        for (auto& allowed : allowedrefs)
+        {
+            allowed = -1;
+        }
+    }
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
     void doposteriorhaplotypes(int index);
@@ -814,7 +868,7 @@ vector<individ> inds;
 void individ::samplehaplotypes(int index)
 {
     // Very crude, biased
-    std::uniform_real_distribution<float> distribution(-0.1, 0.1);
+    std::uniform_real_distribution<float> distribution(-offsmagn, offsmagn);
 
     for (int j = 0; j < ploidy; j++)
     {        
@@ -825,10 +879,12 @@ void individ::samplehaplotypes(int index)
         haplotypes[index + j].crosssim.resize(genotypes.size());
         haplotypes[index + j].desired.resize(genotypes.size());
         haplotypes[index + j].momentum.resize(genotypes.size());
+        if (allowedrefs[0] != -1) haplotypes[index + j].allowedrefs = &allowedrefs;
         bool first = true;
         int firstatall = -1;
         for (int i = 0; i < genotypes.size(); i++)
         {
+            //if (ourmap.otherepses[i] > 0.10) genotypes[i] = -1;
             double genotype = genotypes[i];
             bool any = false;
             if (genotype < 0)
@@ -839,6 +895,8 @@ void individ::samplehaplotypes(int index)
                     genotype = (reads[i][1] + (ploidy - 1) * 0.5) / (readsum + ploidy - 1) * ploidy;
                     haplotypes[index + j].getanyprior(i) = std::max(0.5f, 1.0f - powf(powf(0.5, 1.0f / ploidy), readsum));
                 }
+                else
+                    haplotypes[index + j].getanyprior(i) = false;
                 any = reads[i][0] && reads[i][1];
             }
             else
@@ -846,15 +904,19 @@ void individ::samplehaplotypes(int index)
                 haplotypes[index + j].getanyprior(i) = true;
                 any = genotype >= 1 && genotype <= ploidy - 1;
             }
+
+            haplotypes[index + j].offset[i] = distribution(rng);
+            haplotypes[index + j].momentum[i] = 0;
+
             if (genotype >= 0)
             {
                 if (firstatall == -1) firstatall = i;
                 
-                haplotypes[index + j].offset[i] = distribution(rng);
-                haplotypes[index + j].momentum[i] = 0;
-                float val = std::clamp<float>((genotype / 1.0f / ploidy) * (1.0f - haplotypes[index + j].offset[i]), 1e-5f, 1 - 1e-5f);
+                float val = std::clamp<float>((genotype / 1.0f / ploidy) * (1.0f - haplotypes[index + j].offset[i]), updeps, 1 - updeps);
                 haplotypes[index + j].getprior(i)[0] = 1.0f - val;
                 haplotypes[index + j].getprior(i)[1] = val;                
+                if (fixatone)
+                {                
                 if (!nozeroone && first && any && (j == 0 || j == ploidy - 1))
                 {
                     first = false;
@@ -869,6 +931,12 @@ void individ::samplehaplotypes(int index)
                     haplotypes[index + j].getprior(i)[0] = a;
                     haplotypes[index + j].getprior(i)[1] = b;
                 }
+                }
+            }
+            else
+            {
+                haplotypes[index + j].getprior(i)[0] = 0;
+                haplotypes[index + j].getprior(i)[1] = 0;    
             }
         }
 
@@ -876,8 +944,11 @@ void individ::samplehaplotypes(int index)
         {
             bool val = haplotypes[index + j].getprior(firstatall)[0] < 0.5;
 
+            if (fixatone)
+            {
             haplotypes[index + j].getprior(firstatall)[0] = !val;
             haplotypes[index + j].getprior(firstatall)[1] = val;
+            }
         }
     }
 }
@@ -1044,7 +1115,15 @@ std::tuple<int, int, double> individ::findflip(int index)
         for (int p = permcount - 1; p >= 0; p--)
         {
             array<int, ploidy> perm;
-            if (!getploidyperm(p, perm))
+            bool badperm = !getploidyperm(p, perm);
+            if (!badperm && (halfpar || true))
+            {
+                for (int i = 0; i < ploidy; i++)
+                {
+                    if ((perm[i] < ploidy / 2) ^ (i < ploidy / 2)) badperm = true;
+                }
+            }
+            if (badperm)
             {
                 scores[m][p] = -1.1e30f;
                 continue;
@@ -1252,8 +1331,8 @@ bool individ::handleflip(int index)
                 haplotypes[index + j].momentum[i] = momentum[permval];                
                 if (dovar || wounc)
                 {
-                    haplotypes[index + j].getanyprior(j) = anyprior[permval];
-                    haplotypes[index + j].getnewanyprior(j) = newanyprior[permval];
+                    haplotypes[index + j].getanyprior(i) = anyprior[permval];
+                    haplotypes[index + j].getnewanyprior(i) = newanyprior[permval];
                 }
             }
         }
@@ -1428,14 +1507,21 @@ void individ::doposteriorhaplotypes(int index)
                 }
                 if (selfposteriorwo) haplotypes[index + j].posteriorwo[m][z] *= sumwo;
             }
+            if (haplotypes[index + j].getanyprior(m))
+            {
             if (dovar)
             {
                 if (scaleunc) uncvar = std::max((((uncvar / var) - uncshift) / (1 - uncshift)), 1e-30);
-                haplotypes[index + j].getnewanyprior(m) = dovarunc ? uncvar : (onlyvar ? var : (1 - var + uncvar));
+                    haplotypes[index + j].getnewanyprior(m) = std::max(1e-30, dovarunc ? uncvar : (onlyvar ? var : (1 - var + uncvar)));
             }
             if (wounc)
             {
                 haplotypes[index + j].getnewanyprior(m) = origsum * sumwo;
+                }
+                if ((dovar || wounc) && uncnogeno && (genotypes[m] == -1 && !reads[m][0] && !reads[m][1]))
+                {
+                    haplotypes[index + j].getnewanyprior(m) *= 0.5;
+                }
             }
         }
     }
@@ -1467,7 +1553,7 @@ void individ::nudgehaplotypes(int index)
                         if (z) diff *= -1;
                         if (diff > 0) extremis = m;
                     }
-                    float sim = haplotypes[index + extremis].sim[i] * dampextreme;
+                    float sim = haplotypes[index + extremis].sim[i] * dampextreme * (domarkeps ? (1.0f - ourmap.otherepses[i]) : 1.0f);
                     extremes[extremis] = true;
                     ratio[extremis] = ratio[extremis] * (1 - sim) + !z * sim;                    
                 }
@@ -1542,6 +1628,7 @@ void individ::nudgehaplotypes(int index)
                     // 1 in numerator implies switched order
                     double diff = plaincsdiff ? 1/(1+exp(origmidpoints[k])) - 1/(1+exp(origmidpoints[m])) : (origmidpoints[m] - origmidpoints[k]);
                     if (selflipcs && (midpoints[m] - midpoints[k]) * diff < 0) diff = -diff;
+                    if (rewcsdiff) diff = diff / (1.0001 - haplotypes[index + m].crosssim[i][k]);
                     midpoints[m] += (diff + (diff < 0 ? -1 : 1) * csbump) * (fabs(haplotypes[index + m].offset[i]) + fabs(haplotypes[index + k].offset[i]))
                         * (invcs ? 1.0 / (1.0001 - haplotypes[index + m].crosssim[i][k]) - 1.0 + 0.0001 : haplotypes[index + m].crosssim[i][k])
                         * csscale;                    
@@ -1636,8 +1723,8 @@ void individ::nudgehaplotypes(int index)
             //if (burnin) centered = 0;
             if (nocentertaper) centered = 1;
             if (simoffset && !burnin) centered = haplotypes[index + m].sim[i];
-            if (crosssimoffset && !burnin) centered = 0;
-
+            if (mulsimoffset && !burnin) centered = haplotypes[index + m].sim[i];
+            if (!mulsimoffset && crosssimoffset && !burnin) centered = 0;
             if (!tensionoffset) step[m] += centered * haplotypes[index + m].offset[i];
             double origstep = step[m];
 
@@ -1677,14 +1764,14 @@ void individ::nudgehaplotypes(int index)
             {
                 float old = newpriors[j];
                 int jstep = j ? -1 : 1;
-                newpriors[j] = std::clamp(exp(val[m] * jstep) / (exp(val[m] * jstep) + 1.0), 1e-5, 1 - 1e-5);
+                newpriors[j] = std::clamp<double>(exp(val[m] * jstep) / (exp(val[m] * jstep) + 1.0), updeps, 1 - updeps);
                 double pseudostep = newpriors[j] - old;
                 double otherstep = (fabs(j - ratio[m]) - old);
                 if (minimalstep && pseudostep * step[m] * jstep <= 0 && (!guardminimum || otherstep * step[m] * jstep >= 0))
                 {
                     //newpriors[j] = std::clamp<double>(nexttoward(old, old + step[m] * jstep), 1e-5, 1 - 1e-5);
                     //newpriors[j] = std::clamp<double>(nexttoward(old, old + jstep * (-1 * std::signbit(step[m]) + 1 * std::signbit(-step[m]))), 1e-5, 1 - 1e-5);
-                    newpriors[j] = std::clamp<double>(nexttoward(old, old + jstep * (-1 * std::signbit(step[m]) + 1 * std::signbit(-step[m])) + (-1 * std::signbit(otherstep) + 1 * std::signbit(-otherstep))), 1e-5, 1 - 1e-5);
+                    newpriors[j] = std::clamp<double>(nexttoward(old, old + jstep * (-1 * std::signbit(step[m]) + 1 * std::signbit(-step[m])) + (-1 * std::signbit(otherstep) + 1 * std::signbit(-otherstep))), updeps, 1 - updeps);
                 }
             }
         }
@@ -1694,7 +1781,7 @@ void individ::nudgehaplotypes(int index)
 #pragma omp taskloop num_tasks(ploidy * 2)
     for (int i = 0; i < genotypes.size(); i++)
     {
-        if (updallpriors || reads[i][0] + reads[i][1] > 0)
+        if (updallpriors || reads[i][0] + reads[i][1] > 0 || genotypes[i] >= 0)
         {
             array<ratiotype, ploidy> ratio;
             double means[2] = {0};
@@ -1760,7 +1847,7 @@ void individ::nudgehaplotypes(int index)
 
                         if (clampmix)
                         {
-                            val = std::clamp(val, 1e-5, 1 - 1e-5);
+                            val = std::clamp<double>(val, updeps, 1 - updeps);
                         }
 
                         mixposteriors[j][n] = val;
@@ -1798,7 +1885,7 @@ void individ::nudgehaplotypes(int index)
                         double base = data[now][a];
                         int counts[2] = {ploidy - 1 - a, a};
                         counts[j]++;
-                        if (genotypes[i] != -1 && counts[1] != genotypes[i]) continue;
+                        if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f);
 
                         for (int k = 0; k < 2; k++)
                         {
@@ -2013,7 +2100,7 @@ void doit()
     if (dovar || wounc) anypriors = newanypriors;
 }
 
-void readdummy(const char* mapname, const char* genoname)
+void readdummy(const char* mapname, const char* genoname, const char* allowedrefsname)
 {
     FILE* mapfile = fopen(mapname, "rt");
     ourmap.chromstarts.push_back(0);
@@ -2026,7 +2113,7 @@ void readdummy(const char* mapname, const char* genoname)
     {
         double pos;
         fscanf(mapfile, "%lf", &pos);
-        prev += 5e-3f;
+        prev += epsiloncM;
         if (pos < prev)
         {
             pos = prev;
@@ -2037,9 +2124,11 @@ void readdummy(const char* mapname, const char* genoname)
     ourmap.chromstarts.push_back(d);
 
     FILE* indfile = fopen(genoname, "rt");
+    FILE* allowedrefsfile = fopen(allowedrefsname, "rt");
     int n;
     fscanf(indfile, "%d", &n);
     inds.resize(n);
+    fscanf(allowedrefsfile, "%d", &n);
     for (individ& ind : inds)
     {
         ind.genotypes.resize(d);
@@ -2059,6 +2148,12 @@ void readdummy(const char* mapname, const char* genoname)
             {
                 ind.genotypes[i] = a;
             }
+        }
+        for (int i = 0; i < 8; i++)
+        {
+            int num;
+            fscanf(allowedrefsfile, "%d", &num);
+            ind.allowedrefs[i] = num;
         }
     }
 }
@@ -2087,8 +2182,8 @@ void readrefs(const char* hapname)
             fscanf(indfile, "%d", &val);
             if (val >= 0 && val <= 1)
             {
-                now.getprior(j)[val] = 1.f - 1e-5f;
-                now.getprior(j)[!val] = 1e-5f;
+                now.getprior(j)[val] = 1.f - refeps;
+                now.getprior(j)[!val] = refeps;
                 now.getanyprior(j) = true;
             }
             else
@@ -2099,20 +2194,73 @@ void readrefs(const char* hapname)
     }
 }
 
+void readerrors(const char* errorsname)
+{
+    FILE* errorsfile = fopen(errorsname, "rt");
+    int n;
+    fscanf(errorsfile, "%d", &n);
+    ourmap.otherepses.resize(n);
+    for (int i = 0; i < n; i++)
+    {
+        float val;
+        fscanf(errorsfile, "%f", &val);
+        if (val < 1)
+        {
+            val = std::min(1.0f, val / (ploidy - 1) * (1 / (1 - val)));
+        }
+        if (val < 0) val = 0;
+        ourmap.otherepses[i] = val; 
+    }
+}
+
 int main(int argc, char** argv) 
 {/*
 #ifdef _OPENMP
     omp_set_max_active_levels(2);
 #endif*/
-    readdummy("potato_chr1.map", "potato_missing.gen");
-    //readdummy("polypop.map", "polyphref.gen");
-    //readrefs("polyref.hap");
-    //inds.resize(2);
+    //readdummy("potato_chr1.map", "potato_missing.gen");
+    readdummy("polypop_1.map", "polyphref_1_0.gen", "allowedrefs__0.out");
+    readerrors("polyerrors.out");
+    readrefs("polyref_1_0.hap");
+    int indi = 0;
     initinds();
+    for (auto& ind : inds)
+    {
+        for (int i = 0; i < ind.genotypes.size(); i++)
+        {
+            if (ind.genotypes[i] == -1) continue;
+
+            int mins[2] = {2, 2};
+            int maxs[2] = {0, 0};
+            for (int j = 0; j < basehaps; j++)
+            {
+                int index = j / (basehaps / 2);
+                int val = haplotypes[j].getprior(i)[1] > 0.5;
+                mins[index] -= 1 - val; //= std::min(val * 2, mins[index]);
+                maxs[index] += val; //= std::max(val * 2, maxs[index]);
+                mins[index] = std::max(0, mins[index]);
+                maxs[index] = std::min(ploidy, maxs[index]);
+            }
+            mins[0] += mins[1];
+            maxs[0] += maxs[1];
+
+            if (ind.genotypes[i] < mins[0] || ind.genotypes[i] > maxs[0])
+            {
+                printf("NOT WORKING %d:%d %d (%d, %d)", indi, i,ind.genotypes[i], mins[0], maxs[0]);
+                for (int j = 0; j < basehaps; j++)
+                {
+                    printf(" %d", haplotypes[j].getprior(i)[1] > 0.5);
+                }
+                printf("\n");
+            }
+        }
+        indi++;
+    }
+    //inds.resize(2);
     double origstepsize = stepsize;
     burnin = true;
     stepsize = 0.2;
-    for (int iter = 0; iter < 20000; iter++)
+    for (int iter = 0; iter < 5000; iter++)
     {
         if (iter == 500)
     {
