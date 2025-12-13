@@ -1,28 +1,13 @@
 #include <algorithm>
 #include <numeric>
-#include <array>
-#include <Eigen/Dense>
 #include <vector>
 #include <random>
 #include <numeric>
 #include <tuple>
 #include <math.h>
 
-using Eigen::ArrayXXf;
-using Eigen::ArrayXf;
-using std::array;
-using std::vector;
+#include "imputato_data.h"
 
-using ratiotype = double;
-
-using genprob = array<float, 2>;
-
-struct map
-{
-    vector<int> chromstarts;
-    vector<double> chromposes;
-    vector<float> otherepses;
-} ourmap;
 
 // Borrowed https://stackoverflow.com/questions/17719674/c11-fast-constexpr-integer-powers
 constexpr int64_t ipow_(int base, int exp){
@@ -32,13 +17,6 @@ constexpr int64_t ipow(int base, int exp){
   return exp < 1 ? 1 : ipow_(base, exp);
 }
 
-float Ne = 750;
-const constexpr float Neend = 1.0;
-const constexpr float Nedecay = 0.99;
-const constexpr float Nestep = 0.0f;
-const constexpr bool newNed = false;
-const constexpr int ploidy = 4;
-const constexpr int maxreads = 20; 
 const constexpr int permcount = ipow(ploidy, ploidy);
 
 using ArrayXPf = Eigen::Array<float, Eigen::Dynamic, ploidy>;
@@ -50,358 +28,146 @@ template<class column> void doemit(column& c, float& anyprior, genprob& prior, i
 
 template<class column> void dotransition(column& c, column& c2, const map& themap, int marker, int d, int index);
 
-vector<vector<genprob> > priors;
-vector<vector<genprob> > newpriors;
-vector<vector<float> > anypriors;
-vector<vector<float> > newanypriors;
-
-constexpr bool disableplacement = true;
-constexpr bool disableperm = true;
-constexpr bool permpostburnin = false;
-constexpr bool altperm = false;
-constexpr bool mulpriorrest = true;
-constexpr bool mulpriorself = false;
-constexpr bool antipriorself = false;
-constexpr bool antipriorpp = false;
-//constexpr bool antidiffp = false;
-constexpr bool propriorself = false;
-constexpr bool allhets = false;
-constexpr bool burninassgn = false;
-constexpr bool postassgn = false;
-constexpr bool earlypost = true;
-constexpr bool allnotme = false;
-constexpr bool selfposteriorwo = true;
-constexpr bool restposteriorwo = true;
-constexpr float momspeed = 0.01f;
-constexpr float killflipm = 0.05f;
-constexpr bool selfpriorunass = false;
-constexpr bool nonwoearly = false;
-constexpr bool fullwo = true;
-constexpr bool liftmeannprior = false;
-constexpr bool antiselfmean = false;
-double posteriormix = 0.0;
-constexpr double respostmix = 0.00005;
-double tension = 1.00;
-constexpr double tensiongrow = 1.0000;
-constexpr int tensionreset = 2000;
-constexpr bool extremetension = false;
-constexpr bool nocentertaper = false;
-constexpr double offsetdecay = 1.000;
-constexpr bool fillinmissingwo = false;
-constexpr bool neutralmissing = false;
-constexpr bool noanypriorweight = true;
-bool updallpriors = false;
-constexpr int setpostiter = 5001;
-constexpr bool simplestep = false;
-constexpr bool modifiedclamp = false;
-constexpr bool domaxcentered = true;
-constexpr bool tensionoffset = false;
-constexpr bool nozeroone = false;
-constexpr bool simoffset = false;
-constexpr bool crosssimoffset = true;
-constexpr double csscale = 10;
-constexpr bool priororig = true;
-constexpr bool priorpowo = false; // powoorig makes more sense
-constexpr bool mixorig  = false;
-constexpr bool postorig = false;
-constexpr bool expklsim = false;
-constexpr bool extremsim = true;
-constexpr bool invcs = false;
-constexpr bool simpowo = false;
-constexpr double midpointcap = 30;
-constexpr bool caponpriors = true;
-constexpr bool simposteriormix = true;
-constexpr bool antisimposterior = true;
-constexpr bool binomsimcomp = false;
-constexpr bool neverflip = false;
-constexpr bool preextremis = false;
-constexpr bool highsimpost = false;
-constexpr bool antihisim = true;
-constexpr bool postmixred = false;
-constexpr bool postmixreset = false;
-constexpr bool newpostmix = true;
-constexpr double csbump = 0.000;
-constexpr int endstepgrow = 850;
-constexpr int startstepshrink = 2000;
-constexpr bool redcertmix = false;
-constexpr bool simredcert = false;
-constexpr bool antiredcert = true;
-constexpr double certfactor = 4;
-constexpr double certterm = 0;
-constexpr bool killibd2trans = false;
-constexpr bool killibd2unc = false;
-constexpr bool genounc = false;
-constexpr bool sepgenounc = false;
-constexpr bool snowball = false;
-constexpr bool bigsnow = true;
-constexpr float momspeed2 = 0.99f;
-constexpr bool clampmom = true;
-constexpr double clamplim = 2.0;
-constexpr bool arimeanmix = false;
-constexpr bool logitmeanmix = true;
-constexpr bool clampmix = false;
-constexpr bool agnosticflip = false;
-constexpr bool bothagn = false;
-constexpr bool advstep = true;
-constexpr double minstep = 1e-32;
-constexpr bool selflipcs = false;
-constexpr bool midpoint11m = false;
-constexpr bool rngflwght = true;
-double flipdrag = 0;
-constexpr double fldrstep = 0.0005;
-constexpr bool plaincsdiff = false;
-constexpr bool momstepclamp = false;
-constexpr bool noburninmom = false;
-constexpr int advpostsum = 1;
-constexpr bool minimalstep = true;
-constexpr bool guardminimum = true;
-constexpr bool logitstep = true;
-constexpr float dampextreme = 0.999f;
-constexpr bool stepszoffs = true;
-constexpr bool ibd2sort = true;
-constexpr bool nodropysum = true;
-constexpr int ibdgroupsize = 4;
-constexpr bool sortemit = false;
-constexpr bool resetsort = true;
-constexpr bool sortsim = true;
-constexpr bool sortflip = true;
-constexpr bool progribd = true;
-constexpr double levelibd = 3;
-constexpr bool ibddecl = true;
-constexpr bool adjibd = true;
-constexpr double declstep = 1;
-constexpr double minlevelibd = 3;
-constexpr bool preindex = true;
-constexpr double ibdfloor = 0;
-constexpr bool orgsumw = true;
-constexpr double ibdeps = 1e-9;
-constexpr bool readj = true;
-constexpr bool tightreadj = true;
-constexpr bool dofixed = false;
-constexpr bool groupibd2 = true;
-constexpr bool antigroup = true;
-constexpr bool antigflip = true;
-constexpr float flipscale = 0.99f;
-constexpr bool randflippos = false;
-constexpr bool noiseflippos = false;
-constexpr bool ibdfactors = true;
-constexpr bool ibdmax = false;
-constexpr bool ibdmax2 = false;
-constexpr bool groupmax = false;
-constexpr bool antifactors = true;
-constexpr bool powofactors = false;
-constexpr bool vetoflip = true;
-constexpr bool crossibd = true;
-constexpr bool nonsimfactor = true;
-constexpr bool mulminibd = true;
-constexpr bool dovar = true;
-constexpr bool dovarunc = false;
-constexpr bool scaleunc = false;
-constexpr bool onlyvar = false;
-constexpr double uncshift = 0.0;
-constexpr bool scaleanyprior = false;
-constexpr bool wounc = false;
-constexpr bool scaleanypriorw = true;
-constexpr bool nocshz = false;
-constexpr bool onlyref = true;
-constexpr float epsothergeno = 0 * 0.005 / (ploidy - 1);
-constexpr bool domarkeps = true;
-constexpr bool uncnogeno = true;
-constexpr float epsiloncM = 5e-3f;
-constexpr bool halfpar = false;
-constexpr bool fixatone = true;
-constexpr float offsmagn = 0.05;
-constexpr float filterlevel = 1.0f;
-constexpr float refeps = 1e-10f;
-constexpr bool weakeneps = true;
-constexpr bool rewcsdiff = false;
-constexpr float updeps = 1e-5f;
-constexpr bool filterrefs = true;
-constexpr bool mulsimoffset = true;
-constexpr bool halfparinit = true;
-constexpr bool sampoffshalf = true;
-constexpr bool meanoffs = true;
-constexpr bool lateoffset = true;
-constexpr bool oneflip = true;
-constexpr float flipbias = 0.002;
-constexpr float maxexpdist = 10;
-constexpr bool donzcmin = false;
-constexpr float nzminfactor = 0.99f;
-constexpr bool invcsbump = true;
-constexpr bool selzerocs = true;
-constexpr bool donzcess = true;
-constexpr bool bothpowo = true;
-constexpr bool latenz = true;
-constexpr bool prelatenz = false;
-constexpr bool stepfrom = true;
-constexpr float nzmaxfactor = 1.000f;
-constexpr bool clearnonmendel = true;
-constexpr bool relevel = true;
-constexpr float singlerelevel = 0.9999f;
-constexpr bool multirelev = true;
-
 int basehaps;
 
-struct haplotype
+void haplotype::dofwbw(bool fw, const map& themap)
 {
-    vector<genprob> posterior;
-    vector<genprob> posteriorwo;
-    vector<float> sim;
-    vector<array<float, ploidy>> crosssim;
-    vector<float> desired;
-    vector<float> offset;
-    vector<float> momentum;
-    array<int, 8>* allowedrefs = nullptr;
+    ArrayXXf& myfwbw = fwbw[fw];
+    int colcount = myfwbw.cols();
 
-    ArrayXXf* fwbw;
-    vector<double> renorm[2];
-    genprob& getprior(int m) const;
-    genprob& getnewprior(int m) const;
-    float& getanyprior(int m) const;
-    float& getnewanyprior(int m) const;
-    int getindex() const;
+    int start = fw ? 0 : colcount - 1;
+    int end = fw ? myfwbw.cols() : 0;
+    int step = fw ? 1 : -1;
+    int sidestep = fw ? 0 : -1;
 
-    void dofwbw(bool fw, const map& themap)
+    myfwbw.col(start).fill(1.0f / myfwbw.rows());
+    renorm[fw][start] = 0.0f;
+
+    if (filterrefs && allowedrefs && onlyref)
     {
-        ArrayXXf& myfwbw = fwbw[fw];
-        int colcount = myfwbw.cols();
+        int half = ((getindex() - basehaps) % ploidy) >= (ploidy / 2);
+        int halffactor = ploidy;
 
-        int start = fw ? 0 : colcount - 1;
-        int end = fw ? myfwbw.cols() : 0;
-        int step = fw ? 1 : -1;
-        int sidestep = fw ? 0 : -1;
-
-        myfwbw.col(start).fill(1.0f / myfwbw.rows());
-        renorm[fw][start] = 0.0f;
-
-        if (filterrefs && allowedrefs && onlyref)
+        if (!halfparinit || !fw)
         {
-            int half = ((getindex() - basehaps) % ploidy) >= (ploidy / 2);
-            int halffactor = ploidy;
-
-            if (!halfparinit || !fw)
-            {
-                half = 0;
-                halffactor = ploidy * 2;
-            }
-
-            for (int i = 0; i < myfwbw.rows(); i++)
-            {
-                bool ok = false;
-                for (int j = (half * (halffactor)); j < ((half + 1) * (halffactor)); j++)
-                {
-                    if ((*allowedrefs)[j] == i / 2) ok = true;
-                }
-
-                if (!ok) myfwbw.col(start)(i) = 0;
-            }
+            half = 0;
+            halffactor = ploidy * 2;
         }
 
-        int indices[myfwbw.rows() / 2 / ibdgroupsize]; //ibd2sort
-
-        for (int m = start; m != end; m += step)
+        for (int i = 0; i < myfwbw.rows(); i++)
         {
-            auto col = myfwbw.col(m + sidestep);
-            double srcrenorm = 0;            
-
-            auto donz = [&] ()
+            bool ok = false;
+            for (int j = (half * (halffactor)); j < ((half + 1) * (halffactor)); j++)
             {
-                int from = m - sidestep - 1;
-                if (prelatenz && stepfrom) from -= sidestep;
-                if (from >= 0 && from < myfwbw.cols() && (donzcmin || donzcess))
-                {
-                    int nzc = 0;
-                    float nzmin = 1e30f;
-                    double nzsum = 0;
-                    double sqsum = 0;
-                    for (int i = 0; i < myfwbw.rows(); i++)
-                    {
-                        if (col(i))
-                        {
-                            nzmin = std::min(nzmin, col(i));
-                            nzc++;
-                        }
-                        nzsum += col(i);
-                        if (donzcess)
-                        {
-                            sqsum += col(i) * col(i);
-                        }
-                    }
-
-                    if (nzsum)
-                    {
-                        if (donzcmin)
-                        {
-                            nzsum /= nzc;                        
-                            nzmin *= nzminfactor * (1.0 - (nzsum - nzmin) / nzsum);
-                            float scale = nzsum / (nzsum - nzmin);
-                            for (int i = 0; i < myfwbw.rows(); i++)
-                            {
-                                if (col(i))
-                                {
-                                    col(i) -= nzmin;
-                                    col(i) *= scale;
-                                }
-                            }
-                        }
-                        if (donzcess && nzc > 1)
-                        {
-                            double ess = nzsum * nzsum / sqsum;
-                            double sim = (ess - 1) / (nzc - 1);
-                            sim *= sim;
-                            sim *= nzminfactor;
-                            if (sim < 1.0 - nzmaxfactor) sim = 1.0 - nzmaxfactor;
-                            if (!isfinite(sim) || sim < 0 || sim > 1)
-                            {
-                                printf("%d %d %d %lf\n", getindex(), m, step, sim);
-                            }
-                            col = col * (1 - sim) + myfwbw.col(from) * sim * nzsum;
-                        }
-                    }
-                }
-            };
-            if (m - sidestep - 1 >= 0)
-            {
-                int from = m - sidestep - 1;
-                srcrenorm = renorm[fw][from];
-                myfwbw.col(m + sidestep) = myfwbw.col(from);
-                if (!fw /*&& getanyprior(from)*/) doemit(col, getanyprior(from), getprior(from), from, indices);
-                if (!fw && prelatenz) donz();
-                dotransition(col, col, themap, from, step, getindex());
-
-                if (!latenz && (fw || !prelatenz)) donz();
+                if ((*allowedrefs)[j] == i / 2) ok = true;
             }
 
-            if (fw /*&& getanyprior(m + sidestep)*/)
-            {
-                if (fullwo)
-                {
-                    fwbw[2].col(m + sidestep) = myfwbw.col(m + sidestep);
-                }
-                doemit(col, getanyprior(m + sidestep), getprior(m + sidestep), m + sidestep, indices);
-            }
-
-            for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
-            {
-                col(j * 2) = 0;
-                col(j * 2 + 1) = 0;
-            }
-            if (latenz && (fw || !prelatenz)) donz();
-
-            float sum = col.sum();
-            sum += 1e-32;
-            
-            renorm[fw][m + sidestep] = srcrenorm + log(sum);
-            col *= expf(srcrenorm - renorm[fw][m + sidestep]);
-            if (fw && fullwo)
-            {
-                fwbw[2].col(m + sidestep) *= expf(srcrenorm - renorm[fw][m + sidestep]);
-            }
+            if (!ok) myfwbw.col(start)(i) = 0;
         }
     }
-};
 
-vector<haplotype> haplotypes;
+    int indices[myfwbw.rows() / 2 / ibdgroupsize]; //ibd2sort
+
+    for (int m = start; m != end; m += step)
+    {
+        auto col = myfwbw.col(m + sidestep);
+        double srcrenorm = 0;            
+
+        auto donz = [&] ()
+        {
+            int from = m - sidestep - 1;
+            if (prelatenz && stepfrom) from -= sidestep;
+            if (from >= 0 && from < myfwbw.cols() && (donzcmin || donzcess))
+            {
+                int nzc = 0;
+                float nzmin = 1e30f;
+                double nzsum = 0;
+                double sqsum = 0;
+                for (int i = 0; i < myfwbw.rows(); i++)
+                {
+                    if (col(i))
+                    {
+                        nzmin = std::min(nzmin, col(i));
+                        nzc++;
+                    }
+                    nzsum += col(i);
+                    if (donzcess)
+                    {
+                        sqsum += col(i) * col(i);
+                    }
+                }
+
+                if (nzsum)
+                {
+                    if (donzcmin)
+                    {
+                        nzsum /= nzc;                        
+                        nzmin *= nzminfactor * (1.0 - (nzsum - nzmin) / nzsum);
+                        float scale = nzsum / (nzsum - nzmin);
+                        for (int i = 0; i < myfwbw.rows(); i++)
+                        {
+                            if (col(i))
+                            {
+                                col(i) -= nzmin;
+                                col(i) *= scale;
+                            }
+                        }
+                    }
+                    if (donzcess && nzc > 1)
+                    {
+                        double ess = nzsum * nzsum / sqsum;
+                        double sim = (ess - 1) / (nzc - 1);
+                        sim *= sim;
+                        sim *= nzminfactor;
+                        if (sim < 1.0 - nzmaxfactor) sim = 1.0 - nzmaxfactor;
+                        if (!isfinite(sim) || sim < 0 || sim > 1)
+                        {
+                            printf("%d %d %d %lf\n", getindex(), m, step, sim);
+                        }
+                        col = col * (1 - sim) + myfwbw.col(from) * sim * nzsum;
+                    }
+                }
+            }
+        };
+        if (m - sidestep - 1 >= 0)
+        {
+            int from = m - sidestep - 1;
+            srcrenorm = renorm[fw][from];
+            myfwbw.col(m + sidestep) = myfwbw.col(from);
+            if (!fw /*&& getanyprior(from)*/) doemit(col, getanyprior(from), getprior(from), from, indices);
+            if (!fw && prelatenz) donz();
+            dotransition(col, col, themap, from, step, getindex());
+
+            if (!latenz && (fw || !prelatenz)) donz();
+        }
+
+        if (fw /*&& getanyprior(m + sidestep)*/)
+        {
+            if (fullwo)
+            {
+                fwbw[2].col(m + sidestep) = myfwbw.col(m + sidestep);
+            }
+            doemit(col, getanyprior(m + sidestep), getprior(m + sidestep), m + sidestep, indices);
+        }
+
+        for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
+        {
+            col(j * 2) = 0;
+            col(j * 2 + 1) = 0;
+        }
+        if (latenz && (fw || !prelatenz)) donz();
+
+        float sum = col.sum();
+        sum += 1e-32;
+        
+        renorm[fw][m + sidestep] = srcrenorm + log(sum);
+        col *= expf(srcrenorm - renorm[fw][m + sidestep]);
+        if (fw && fullwo)
+        {
+            fwbw[2].col(m + sidestep) *= expf(srcrenorm - renorm[fw][m + sidestep]);
+        }
+    }
+}
 
 int haplotype::getindex() const
 {
@@ -958,29 +724,6 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
 
 std::mt19937 rng;
 
-struct individ
-{
-    vector<int> genotypes;
-    vector<array<int, 2>> reads;
-    array<int, 8> allowedrefs;
-    vector<float> maxshared;
-    vector<int> maxsharedid;
-
-    individ()
-    {
-        for (auto& allowed : allowedrefs)
-        {
-            allowed = -1;
-        }
-    }
-    void samplehaplotypes(int index);
-    void nudgehaplotypes(int index);
-    void doposteriorhaplotypes(int index);
-    std::tuple<int, int, double> findflip(int index);
-    bool handleflip(int index);
-};
-
-vector<individ> inds;
 
 void individ::samplehaplotypes(int index)
 {
@@ -1040,7 +783,13 @@ void individ::samplehaplotypes(int index)
                     haplotypes[index + j].getanyprior(i) = std::max(0.5f, 1.0f - powf(powf(0.5, 1.0f / ploidy), readsum));
                 }
                 else
+                {
+                    for (int k = 0; k < ploidy; k++)
+                    {
+                        
+                    }
                     haplotypes[index + j].getanyprior(i) = false;
+                }
                 any = reads[i][0] && reads[i][1];
             }
             else
@@ -2577,6 +2326,77 @@ void readerrors(const char* errorsname)
     }
 }
 
+double origstepsize = stepsize;
+
+void doiter(int iter)
+{
+    if (iter == burniniters)
+    {
+        burnin = false;
+        stepsize = origstepsize;
+    }
+    if (iter == setpostiter)
+    {
+        updallpriors = true;
+        for (int i = 0; i < haplotypes.size(); i++)
+        {
+            for (int m = 0; m < haplotypes[i].posterior.size(); m++)
+            {
+                genprob& posts = haplotypes[i].posterior[m];
+                float prisum = 0;
+                genprob& priors = haplotypes[i].getprior(m);
+                genprob& newpriors = haplotypes[i].getnewprior(m);
+                for (float v : priors)
+                    prisum += v;
+                
+                if (prisum)
+                {
+                    printf("prior already present for %d:%d\n", i, m);
+                    continue;
+                }
+
+                float postsum = 0;
+                for (float v : posts)
+                    postsum += v;
+                if (!postsum)
+                {
+                    printf("posterior not present for %d:%d\n", i, m);
+                    continue;
+                }
+
+                for (int k = 0; k < priors.size(); k++)
+                {
+                    priors[k] = posts[k];
+                    newpriors[k] = posts[k];
+                }
+                haplotypes[i].getanyprior(m) = 0.5;
+                haplotypes[i].getnewanyprior(m) = 0.5;
+            }
+        }
+    }
+    if (iter >= startstepshrink) stepsize *= 0.999;
+    else
+    if (!burnin && iter < endstepgrow) stepsize *= 1.0024;
+    if (iter % tensionreset == 0) tension = 1.00;
+    if (iter % tensionreset == 0 && postmixreset) posteriormix = 0;
+    if (!burnin && !newNed)
+    {
+        Ne *= Nedecay;
+        Ne -= Nestep;
+        Ne = std::max<float>(Ne, Neend);
+    }
+    if (!burnin && newNed)
+    {
+        Ne = Neend + (Ne - Neend) * Nedecay;
+    }
+    tension *= tensiongrow;
+    flipdrag += fldrstep;
+    if (!burnin) posteriormix = 1.0 - (1.0 - posteriormix) * (1.0 - respostmix);
+    likelihood = 0;
+    doit();
+}
+
+#ifndef IMPUTATO_SKIP_MAIN
 int main(int argc, char** argv) 
 {/*
 #ifdef _OPENMP
@@ -2624,55 +2444,10 @@ int main(int argc, char** argv)
     }
     initinds();
     //inds.resize(2);
-    double origstepsize = stepsize;
     burnin = true;
     stepsize = 0.2;
-    for (int iter = 0; iter < 5000; iter++)
+    for (int iter = 0; iter < itercount; iter++)
     {
-        if (iter == 500)
-        {
-            burnin = false;
-            stepsize = origstepsize;
-        }
-        if (iter == setpostiter)
-        {
-            updallpriors = true;
-            for (int i = 0; i < haplotypes.size(); i++)
-            {
-                for (int m = 0; m < haplotypes[i].posterior.size(); m++)
-                {
-                    genprob& posts = haplotypes[i].posterior[m];
-                    float prisum = 0;
-                    genprob& priors = haplotypes[i].getprior(m);
-                    genprob& newpriors = haplotypes[i].getnewprior(m);
-                    for (float v : priors)
-                        prisum += v;
-                    
-                    if (prisum)
-                    {
-                        printf("prior already present for %d:%d\n", i, m);
-                        continue;
-                    }
-
-                    float postsum = 0;
-                    for (float v : posts)
-                        postsum += v;
-                    if (!postsum)
-                    {
-                        printf("posterior not present for %d:%d\n", i, m);
-                        continue;
-                    }
-
-                    for (int k = 0; k < priors.size(); k++)
-                    {
-                        priors[k] = posts[k];
-                        newpriors[k] = posts[k];
-                    }
-                    haplotypes[i].getanyprior(m) = 0.5;
-                    haplotypes[i].getnewanyprior(m) = 0.5;
-                }
-            }
-        }
         for (int i = 12; i < inds.size(); i += inds.size() - 1)
         {
             for (int j = 0; j < 200; j++)
@@ -2718,27 +2493,8 @@ int main(int argc, char** argv)
                 printf("\n");
             }
         }
-        if (iter >= startstepshrink) stepsize *= 0.999;
-        else
-        if (!burnin && iter < endstepgrow) stepsize *= 1.0024;
-        if (iter % tensionreset == 0) tension = 1.00;
-        if (iter % tensionreset == 0 && postmixreset) posteriormix = 0;
-        if (!burnin && !newNed)
-        {
-            Ne *= Nedecay;
-            Ne -= Nestep;
-            Ne = std::max<float>(Ne, Neend);
-        }
-        if (!burnin && newNed)
-        {
-            Ne = Neend + (Ne - Neend) * Nedecay;
-        }
-        tension *= tensiongrow;
-        flipdrag += fldrstep;
-        if (!burnin) posteriormix = 1.0 - (1.0 - posteriormix) * (1.0 - respostmix);
         printf("Test! %d %lf\n", iter, likelihood);
-        likelihood = 0;
-        doit();
+        doiter(iter);
         if (iter % 1000 == 999)
         {
     char filename[255];
@@ -2781,3 +2537,4 @@ int main(int argc, char** argv)
         }
     }
 }
+#endif
