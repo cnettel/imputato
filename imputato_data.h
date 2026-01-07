@@ -19,7 +19,7 @@ using ratiotype = double;
 
 struct map
 {
-    vector<int> chromstarts;
+    vector<unsigned int> chromstarts;
     vector<double> chromposes;
     vector<float> otherepses;
 } ourmap;
