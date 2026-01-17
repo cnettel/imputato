@@ -811,7 +811,7 @@ void individ::samplehaplotypes(int index)
                     genotype = ploidy - genotype;
                     haplotypes[index + j].offset[i] = -haplotypes[index + j].offset[i];
                 }
-                float val = std::clamp<float>((genotype / 1.0f / ploidy) * (1.0f - haplotypes[index + j].offset[i]), updeps, 1 - updeps);
+                double val = std::clamp<double>((genotype / 1.0f / ploidy) * (1.0f - haplotypes[index + j].offset[i]), updeps, 1.0 - updeps);
                 if (halfed)
                 {
                     val = 1.0f - val;
@@ -819,7 +819,7 @@ void individ::samplehaplotypes(int index)
                     haplotypes[index + j].offset[i] = -haplotypes[index + j].offset[i];
                 }
                 //haplotypes[index + j].offset[i] = distribution(rng);//-haplotypes[index + j].offset[i];
-                haplotypes[index + j].getprior(i)[0] = 1.0f - val;
+                haplotypes[index + j].getprior(i)[0] = 1.0 - val;
                 haplotypes[index + j].getprior(i)[1] = val;
                 if (fixatone)
                 {                
