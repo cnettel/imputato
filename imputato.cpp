@@ -1702,13 +1702,16 @@ void individ::nudgehaplotypes(int index)
             for (int m = 0; m < ploidy; m++)
             {
                 auto& newpriorsm = haplotypes[index + m].getnewprior(i);
+                auto& priorsm = haplotypes[index + m].getprior(i);
                 for (int k = 0; k < ploidy; k++)
                 {
                     if (m == k) continue;//break; //continue;
-                    auto& newpriorsk = haplotypes[index + m].getnewprior(i);
+                    auto& newpriorsk = haplotypes[index + k].getnewprior(i);
+                    auto& priorsk = haplotypes[index + k].getprior(i);
                     if (caponpriors)
                     {
                         if (newpriorsm[0] == 0 || newpriorsk[0] == 0 || newpriorsm[1] == 0 || newpriorsk[1] == 0) continue;
+                        if (priorsm[0] == 0 || priorsk[0] == 0 || priorsm[1] == 0 || priorsk[1] == 0) continue;
                     }
                     else
                     {
