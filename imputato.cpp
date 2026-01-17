@@ -1927,6 +1927,7 @@ void individ::nudgehaplotypes(int index)
                 auto& priors = haplotypes[index + m].getprior(i);                                        
 
                 if (newpostmix) ourposteriormix = 1 + haplotypes[index + m].sim[i] * (antiredcert ? certterm + priors[0] * priors[1] * certfactor : 1) * (-1 + posteriormix * (simredcert ? certterm + priors[0] * priors[1] * certfactor : 1));
+                if (unknownred && reads[0] + reads[1] == 0 && genotypes[i] == -1) ourposteriormix = 0;
 
                 if (redcertmix)
                 {

@@ -194,3 +194,4 @@ constexpr float singlerelevel = 0.9999f;
 constexpr bool multirelev = true;
 constexpr int itercount = 5000;
 constexpr int burniniters = 500;
+constexpr bool unknownred = true;
