@@ -654,7 +654,7 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     int actualSize = haplotypes.size();
     if (onlyref) actualSize = basehaps;
     if (halfpar) actualSize -= basehaps / 2;
-    float rec = -expm1f(dist) / actualSize;
+    float rec = std::max(-expm1f(dist) / actualSize, 1e-5f);
     float sum = c.sum();
     float subsum = 0;
     float subunc = 0;
