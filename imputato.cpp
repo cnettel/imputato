@@ -122,7 +122,7 @@ void haplotype::dofwbw(bool fw, const map& themap)
                         if (sim < 1.0 - nzmaxfactor) sim = 1.0 - nzmaxfactor;
                         if (!isfinite(sim) || sim < 0 || sim > 1)
                         {
-                            printf("%d %d %d %lf\n", getindex(), m, step, sim);
+                            printf("NZWARN: %d %d %d %lf %lf %lf %d\n", getindex(), m, step, sim, nzsum, sqsum, nzc);
                         }
                         col = col * (1 - sim) + myfwbw.col(from) * sim * nzsum;
                     }
