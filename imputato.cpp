@@ -1007,6 +1007,16 @@ std::tuple<int, int, double> individ::findflip(int index)
             }
         }
 
+        if (!updallpriors && genotypes[m] == -1 && reads[m][0] + reads[m][1] == 0)
+        {
+            for (int p = permcount - 1; p >= 0; p--)
+            {
+                scores[m][p] = -1.1e30f;
+                if (oneflip) onescores[m][p] = -1.1e30f;
+            }
+            continue;
+        }
+
         //#pragma ivdep
         for (int j = 0; j < ploidy; j++)        
         {                    
