@@ -651,11 +651,20 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     float dist = (themap.chromposes[marker + d] - themap.chromposes[marker]) * d * -0.02 * Ne;
     dist = std::max(-maxexpdist, dist);
     float nonrec = expf(dist);
-    int actualSize = haplotypes.size();
-    if (onlyref) actualSize = basehaps;
-    if (halfpar) actualSize -= basehaps / 2;
-    float rec = std::max(-expm1f(dist), 1e-5f) / actualSize;
-    float sum = c.sum();
+    float recbase = std::max(-expm1f(dist), 1e-5f);
+    array<float, numclasses> sums;
+    {
+        array<double, numclasses> fullsums{0};
+        for (int i = 0; i < haplotypes[index].classes.size(); i++)
+        {
+            double old = c[i * 2] + c[i * 2 + 1];
+            fullsums[haplotypes[index].classes[i]] += old;
+        }
+        for (int i = 0; i < numclasses; i++)
+        {
+            sums[i] = fullsums[i];
+        }
+    }    
     float subsum = 0;
     float subunc = 0;
     float certf = 0;
@@ -713,10 +722,16 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
             }
             filter |= !ok;
         }
-        float nowsum = selfref ? subsum : sum;        
+        auto myclassweights = haplotypes[index].classweights[haplotypes[index].classes[i]];
+
+        float nowsum = 0;
+        for (int j = 0; j < numclasses; j++)
+        {
+            nowsum += sums[j] * myclassweights[j];
+        }
         for (int j = 0; j < 2; j++)
         {
-            c2[i * 2 + j] = (1.0f - (filter ? filterlevel : 0)) * ((old * (certf + (1 - certf) * (killibd2trans ? (killibd2unc ? subunc : std::max(old, subsum - old) / (subsum + 1e-30f)) : 1 ))) * nonrec + nowsum * rec);
+            c2[i * 2 + j] = (1.0f - (filter ? filterlevel : 0)) * ((old * (certf + (1 - certf) * (killibd2trans ? (killibd2unc ? subunc : std::max(old, subsum - old) / (subsum + 1e-30f)) : 1 ))) * nonrec + nowsum * recbase);
             //c2[i * 2 + j] = (1.0f - (filter ? filterlevel : 0)) * (old  * nonrec + nowsum * rec);
         }
     }
@@ -2122,6 +2137,58 @@ void individ::nudgehaplotypes(int index)
 #pragma omp taskwait
 }
 
+void zeroclasses()
+{
+    for (int i = 0; i < haplotypes.size(); i++)
+    {
+        haplotypes[i].classes.resize(haplotypes.size(), 0);
+        for (int j = 0; j < numclasses; j++)
+        {
+            for (int k = 0; k < numclasses; k++)
+            {
+                haplotypes[i].classweights[j][k] = ((j == 0) && (k == 0)) ? 1 : 0;
+            }
+        }
+    }
+}
+
+void normalizeclasses()
+{
+    for (int i = 0; i < haplotypes.size(); i++)
+    {
+        array<int, numclasses> counts{0};
+        for (int& classval : haplotypes[i].classes)
+        {
+            counts[classval]++;
+        }
+
+        for (int k = 0; k < numclasses; k++)
+        {
+            float sum = 0;
+            for (int j = 0; j < numclasses; j++)
+            {
+                if (counts[j]) sum += haplotypes[i].classweights[j][k];
+            }
+            if (!sum) continue;
+            sum = 1 / sum;
+            for (int j = 0; j < numclasses; j++)
+            {
+                haplotypes[i].classweights[j][k] *= sum;
+            }            
+        }
+
+        for (int j = 0; j < numclasses; j++)
+        {
+            float factor = 1;
+            if (counts[j]) factor = 1.0f / counts[j];
+            for (int k = 0; k < numclasses; k++)
+            {                
+                haplotypes[i].classweights[j][k] *= factor;
+            }
+        }
+    }
+}
+
 void initinds()
 {
     int hapnum = haplotypes.size();
@@ -2457,6 +2524,8 @@ int main(int argc, char** argv)
         indi++;
     }
     initinds();
+    zeroclasses();
+    normalizeclasses();
     //inds.resize(2);
     burnin = true;
     stepsize = 0.2;

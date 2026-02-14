@@ -7,6 +7,7 @@ const constexpr float Nestep = 0.0f;
 const constexpr bool newNed = false;
 const constexpr int ploidy = 4;
 const constexpr int maxreads = 20; 
+const constexpr int numclasses = 4;
 
 constexpr bool disableplacement = true;
 constexpr bool disableperm = true;

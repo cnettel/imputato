@@ -33,6 +33,12 @@ struct haplotype
     vector<float> desired;
     vector<float> offset;
     vector<float> momentum;
+    vector<int> classes;
+    array<array<float, numclasses>, numclasses> classweights;
+    // should be weighted by number of haplotypes in "target" (outer), has to be symmetric
+    // when excluding the weighting for a proper HMM
+    // indexing is [to][from], for fast access in dotransition
+
     array<int, 8>* allowedrefs = nullptr;
 
     ArrayXXf* fwbw;
