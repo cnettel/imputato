@@ -2032,6 +2032,7 @@ void individ::nudgehaplotypes(int index)
                         int counts[2] = {ploidy - 1 - a, a};
                         counts[j]++;
                         if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f), abs(counts[1] - genotypes[i]));
+                        base *= genotypebias[counts[1]];
 
                         for (int k = 0; k < 2; k++)
                         {

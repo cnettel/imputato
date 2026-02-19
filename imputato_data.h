@@ -62,12 +62,17 @@ struct individ
     array<int, 8> allowedrefs;
     vector<float> maxshared;
     vector<int> maxsharedid;
+    array<float, ploidy + 1> genotypebias;
 
     individ()
     {
         for (auto& allowed : allowedrefs)
         {
             allowed = -1;
+        }
+        for (auto& bias : genotypebias)
+        {
+            bias = 1;
         }
     }
     void samplehaplotypes(int index);
