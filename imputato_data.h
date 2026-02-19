@@ -44,6 +44,7 @@ struct haplotype
 
     ArrayXXf* fwbw;
     vector<double> renorm[2];
+    double likelihood;
     genprob& getprior(int m) const;
     genprob& getnewprior(int m) const;
     float& getanyprior(int m) const;

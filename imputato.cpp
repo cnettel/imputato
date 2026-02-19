@@ -1031,7 +1031,8 @@ std::tuple<int, int, double> individ::findflip(int index)
             }
         }
 
-        if (!updallpriors && genotypes[m] == -1 && reads[m][0] + reads[m][1] == 0)
+        // m != 0 just to get stats that are only computed at m == 0
+        if (!updallpriors && genotypes[m] == -1 && reads[m][0] + reads[m][1] == 0 && m != 0)
         {
             for (int p = permcount - 1; p >= 0; p--)
             {
@@ -1300,6 +1301,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                     firstscore += log(2) * pow2;
                     #pragma omp atomic
                     likelihood += firstscore;
+                    haplotypes[index].likelihood = firstscore;
                 }
                 sum += flipbias;
                 sumone += flipbias;
