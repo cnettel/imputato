@@ -40,7 +40,16 @@ void haplotype::dofwbw(bool fw, const map& themap)
     int step = fw ? 1 : -1;
     int sidestep = fw ? 0 : -1;
 
-    myfwbw.col(start).fill(1.0f / myfwbw.rows());
+    if (fw)
+    {
+        auto col = myfwbw.col(start);
+        for (int k = 0; k < myfwbw.rows(); k++)
+        {
+            col(k) = initclassweights[classes[k]];
+        }
+    }
+    else
+        myfwbw.col(start).fill(1.0f / myfwbw.rows());
     renorm[fw][start] = 0.0f;
 
     if (filterrefs && allowedrefs && onlyref)
@@ -2144,6 +2153,7 @@ void zeroclasses()
         haplotypes[i].classes.resize(haplotypes.size(), 0);
         for (int j = 0; j < numclasses; j++)
         {
+            haplotypes[i].initclassweights[j] = (j == 0);
             for (int k = 0; k < numclasses; k++)
             {
                 haplotypes[i].classweights[j][k] = ((j == 0) && (k == 0)) ? 1 : 0;
@@ -2185,6 +2195,7 @@ void normalizeclasses()
             {                
                 haplotypes[i].classweights[j][k] *= factor;
             }
+            haplotypes[i].initclassweights[j] *= factor;
         }
     }
 }

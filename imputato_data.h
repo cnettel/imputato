@@ -38,6 +38,7 @@ struct haplotype
     // should be weighted by number of haplotypes in "target" (outer), has to be symmetric
     // when excluding the weighting for a proper HMM
     // indexing is [to][from], for fast access in dotransition
+    array<float, numclasses> initclassweights;
 
     array<int, 8>* allowedrefs = nullptr;
 
