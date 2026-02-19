@@ -30,7 +30,7 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
 
 int basehaps;
 
-void haplotype::dofwbw(bool fw, const map& themap)
+void haplotype::dofwbw(bool fw, const map& themap, bool initatfw)
 {
     ArrayXXf& myfwbw = fwbw[fw];
     int colcount = myfwbw.cols();
@@ -40,7 +40,7 @@ void haplotype::dofwbw(bool fw, const map& themap)
     int step = fw ? 1 : -1;
     int sidestep = fw ? 0 : -1;
 
-    if (fw)
+    if (fw ^ !initatfw)
     {
         auto col = myfwbw.col(start);
         for (int k = 0; k < myfwbw.rows(); k++)
@@ -1442,7 +1442,7 @@ bool individ::handleflip(int index)
                 }
                 else
                 {
-                    if (i > bestmarker) permval = perm[j];
+                    if (i <= bestmarker ^ initatfw) permval = perm[j];
                 }
                 
                 haplotypes[index + j].getnewprior(i) = prior[permval];
@@ -2257,7 +2257,7 @@ void doit()
     {
         //#pragma omp parallel for num_threads(ploidy * 2), collapse(2), private(hapnum)
         //std::array<ArrayXXf, 2 + fullwo + 1 + nonsimfactor>* fwbw = ::fwbw;
-
+        inds[i].initatfw = std::bernoulli_distribution()(rng);
         hapnum = basehaps + i * ploidy;
         for (int k = 0; k < ploidy; k++)
         {
@@ -2280,7 +2280,7 @@ void doit()
                     haplotypes[hapnum + k].fwbw[2 + fullwo + nonsimfactor + oneflip].resize(haplotypes.size() * 2, ourmap.chromposes.size());
                 if (fw /*&& ibdfactors*/ && relevel && (k == 0 || multirelev))
                     haplotypes[hapnum + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].resize(haplotypes.size() * 2, ourmap.chromposes.size());  
-                if (!burnin) haplotypes[hapnum + k].dofwbw(fw, ourmap);
+                if (!burnin) haplotypes[hapnum + k].dofwbw(fw, ourmap, ind.initatfw);
             }
         }
         
