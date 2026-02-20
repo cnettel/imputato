@@ -143,7 +143,15 @@ void haplotype::dofwbw(bool fw, const map& themap, bool initatfw)
             int from = m - sidestep - 1;
             srcrenorm = renorm[fw][from];
             myfwbw.col(m + sidestep) = myfwbw.col(from);
-            if (!fw /*&& getanyprior(from)*/) doemit(col, getanyprior(from), getprior(from), from, indices);
+            if (!fw /*&& getanyprior(from)*/)
+            {
+                doemit(col, getanyprior(from), getprior(from), from, indices);
+                if (from == fixpoint)
+                    for (int k = 0; k < myfwbw.rows(); k++)
+                    {
+                        col(k) *= initclassweights[classes[k]];
+                    }
+            }
             if (!fw && prelatenz) donz();
             dotransition(col, col, themap, from, step, getindex());
 
@@ -152,6 +160,11 @@ void haplotype::dofwbw(bool fw, const map& themap, bool initatfw)
 
         if (fw /*&& getanyprior(m + sidestep)*/)
         {
+            if (m + sidestep == fixpoint)
+                for (int k = 0; k < myfwbw.rows(); k++)
+                {
+                    col(k) *= initclassweights[classes[k]];
+                }
             if (fullwo)
             {
                 fwbw[2].col(m + sidestep) = myfwbw.col(m + sidestep);
@@ -1442,7 +1455,7 @@ bool individ::handleflip(int index)
                 }
                 else
                 {
-                    if (i <= bestmarker ^ initatfw) permval = perm[j];
+                    if (i <= bestmarker /*^ initatfw*/ ^ i <= fixpoint) permval = perm[j];
                 }
                 
                 haplotypes[index + j].getnewprior(i) = prior[permval];
@@ -2258,6 +2271,7 @@ void doit()
         //#pragma omp parallel for num_threads(ploidy * 2), collapse(2), private(hapnum)
         //std::array<ArrayXXf, 2 + fullwo + 1 + nonsimfactor>* fwbw = ::fwbw;
         inds[i].initatfw = std::bernoulli_distribution()(rng);
+        inds[i].fixpoint = std::uniform_int_distribution(0u, ourmap.chromstarts[1])(rng);
         hapnum = basehaps + i * ploidy;
         for (int k = 0; k < ploidy; k++)
         {
@@ -2280,7 +2294,7 @@ void doit()
                     haplotypes[hapnum + k].fwbw[2 + fullwo + nonsimfactor + oneflip].resize(haplotypes.size() * 2, ourmap.chromposes.size());
                 if (fw /*&& ibdfactors*/ && relevel && (k == 0 || multirelev))
                     haplotypes[hapnum + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].resize(haplotypes.size() * 2, ourmap.chromposes.size());  
-                if (!burnin) haplotypes[hapnum + k].dofwbw(fw, ourmap, ind.initatfw);
+                if (!burnin) haplotypes[hapnum + k].dofwbw(fw, ourmap, ind.initatfw, ind.fixpoint);
             }
         }
         

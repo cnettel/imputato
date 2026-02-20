@@ -51,7 +51,7 @@ struct haplotype
     float& getnewanyprior(int m) const;
     int getindex() const;
 
-    void dofwbw(bool fw, const map& themap, bool initatfw = true);
+    void dofwbw(bool fw, const map& themap, bool initatfw = true, int fixpoint = 0);
 };
 
 struct individ
@@ -64,6 +64,7 @@ struct individ
     vector<int> maxsharedid;
     array<float, ploidy + 1> genotypebias;
     bool initatfw;
+    int fixpoint;
 
     individ()
     {
