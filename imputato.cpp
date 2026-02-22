@@ -927,10 +927,11 @@ std::tuple<int, int, double> individ::findflip(int index)
 
         if (ibdfactors)
         {
-            for (int k = 0; k < (multirelev ? ploidy : 1); k++)
-            {
-                haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m).fill(1.0f);
-            }
+            if (relevel)
+                for (int k = 0; k < (multirelev ? ploidy : 1); k++)
+                {
+                    haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m).fill(1.0f);
+                }
             for (int k = 0; k < (antifactors ? ploidy : 1); k++)
             {
                 constexpr int count = antifactors ? 1 : ploidy;
