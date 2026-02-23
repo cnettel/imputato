@@ -45,7 +45,7 @@ void haplotype::dofwbw(bool fw, const map& themap)
         auto col = myfwbw.col(start);
         for (int k = 0; k < myfwbw.rows(); k++)
         {
-            col(k) = initclassweights[classes[k]];
+            col(k) = initclassweights[classes[k / 2]];
         }
     }
     else
