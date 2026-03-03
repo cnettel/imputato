@@ -661,6 +661,17 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
     dist = std::max(-maxexpdist, dist);
     float nonrec = expf(dist);
     float recbase = std::max(-expm1f(dist), 1e-5f);
+    auto classweights = haplotypes[index].classweights;
+    if (d < 0)
+    {
+        for (int i = 0; i < numclasses; i++)
+        {
+            for (int j = 0; j < numclasses; j++)
+            {
+                classweights[i][j] = haplotypes[index].classweights[j][i];
+            }
+        }
+    }
     array<float, numclasses> sums;
     {
         array<double, numclasses> fullsums{0};
@@ -731,7 +742,7 @@ template<class column> void dotransition(column& c, column& c2, const map& thema
             }
             filter |= !ok;
         }
-        auto myclassweights = haplotypes[index].classweights[haplotypes[index].classes[i]];
+        const auto& myclassweights = classweights[haplotypes[index].classes[i]];
 
         float nowsum = 0;
         for (int j = 0; j < numclasses; j++)
