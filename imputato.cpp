@@ -983,7 +983,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                         val += vals[k];
                     }
                     float origval = val;
-                    if (!singlerelevel)
+                    if (!ind.singlerelevel)
                     {
                         if (val < 1.0f) val = 1.0f;
                         else
@@ -996,7 +996,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                     }
                     else
                     {
-                        if (val < singlerelevel)
+                        if (val < ind.singlerelevel)
                         {
                             val = 1.0f;
                             /*if (multirelev) // reset to 1 per default
@@ -1014,13 +1014,13 @@ std::tuple<int, int, double> individ::findflip(int index)
                             for (int k = 0; k < ploidy; k++)
                             {
                                 float clampval = origval;
-                                if (clampval > singlerelevel + vals[k] * singlerelevel)
+                                if (clampval > ind.singlerelevel + vals[k] * ind.singlerelevel)
                                 {
-                                    clampval = singlerelevel + vals[k] * singlerelevel;
+                                    clampval = ind.singlerelevel + vals[k] * ind.singlerelevel;
                                 }
                                 //float newval = (vals[k] - 1) * (vals[k] + singlerelevel - 1) / (vals[k] * (2 * vals[k] + singlerelevel - 1));
                                 // ax / (ax + 1 - x) = c - (b - x)
-                                float newval = (vals[k] - 1) * (clampval - singlerelevel - vals[k]) / (vals[k] * (clampval - singlerelevel - vals[k] + 1));
+                                float newval = (vals[k] - 1) * (clampval - ind.singlerelevel - vals[k]) / (vals[k] * (clampval - ind.singlerelevel - vals[k] + 1));
                                 if (newval < 1e-3f) newval = 1e-3f;
                                 if (!isfinite(newval)) newval = 1.0f;
                                 if (multirelev)
