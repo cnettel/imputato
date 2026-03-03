@@ -1039,6 +1039,24 @@ std::tuple<int, int, double> individ::findflip(int index)
                         haplotypes[index].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) = val;
                         haplotypes[index].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) = val;
                     }
+
+                    // TODO: Integrate both types better
+                    if (ind.otherrelevel && multirelev /*&& (ind.genotypes[m] < 1 || ind.genotypes[m] > ploidy - 1) && ind.genotypes[m] == -1*/)
+                    {
+                        for (int k = 0; k < ploidy; k++)
+                        {
+                            if (vals[k])
+                            {
+                                float newval = 1.0f + (origval - vals[k]) / (vals[k]) * ind.otherrelevel;
+                                if (newval < 1e-3f) newval = 1e-3f;
+                                //if (newval > ploidy) newval = ploidy;
+                                if (!isfinite(newval)) newval = 1.f;
+                                
+                                haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) *= newval;
+                                haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) *= newval;
+                            }
+                        }
+                    }
                 }
             }
         }

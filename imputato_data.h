@@ -64,6 +64,7 @@ struct individ
     vector<int> maxsharedid;
     array<float, ploidy + 1> genotypebias;
     float singlerelevel;
+    float otherrelevel;
 
     individ()
     {
@@ -76,6 +77,7 @@ struct individ
             bias = 1;
         }
         singlerelevel = ::singlerelevel;
+        otherrelevel = ::otherrelevel;
     }
     void samplehaplotypes(int index);
     void nudgehaplotypes(int index);
