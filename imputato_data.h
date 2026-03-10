@@ -2,7 +2,7 @@
 #define IMPUTATO_DATA_H
 #include <vector>
 #include <array>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 
 #ifndef IMPUTATO_SETTINGS
 #include "imputato_settings.h"
@@ -34,24 +34,25 @@ struct haplotype
     vector<float> offset;
     vector<float> momentum;
     vector<int> classes;
-    array<array<float, numclasses>, numclasses> classweights;
+    array<array<array<float, numclasses>, numclasses>, nummajorclasses> classweights;
     // should be weighted by number of haplotypes in "target" (outer), has to be symmetric
     // when excluding the weighting for a proper HMM
     // indexing is [to][from], for fast access in dotransition
-    array<float, numclasses> initclassweights;
+    array<array<float, numclasses>, nummajorclasses> initclassweights;
 
     array<int, 8>* allowedrefs = nullptr;
 
-    ArrayXXf* fwbw;
-    vector<double> renorm[2];
+    array<ArrayXXf*, nummajorclasses> fwbw;
+    vector<double> renorm[nummajorclasses][2];
     double likelihood;
+    int mainmajorclass = 0;
     genprob& getprior(int m) const;
     genprob& getnewprior(int m) const;
     float& getanyprior(int m) const;
     float& getnewanyprior(int m) const;
     int getindex() const;
 
-    void dofwbw(bool fw, const map& themap);
+    void dofwbw(bool fw, const map& themap, int majorclass);
 };
 
 struct individ

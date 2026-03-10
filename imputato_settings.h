@@ -8,6 +8,7 @@ const constexpr bool newNed = false;
 const constexpr int ploidy = 4;
 const constexpr int maxreads = 20; 
 const constexpr int numclasses = 4;
+const constexpr int nummajorclasses = 2;
 
 constexpr bool disableplacement = true;
 constexpr bool disableperm = true;
