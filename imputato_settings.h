@@ -192,6 +192,7 @@ constexpr bool stepfrom = true;
 constexpr float nzmaxfactor = 1.000f;
 constexpr bool clearnonmendel = true;
 constexpr bool relevel = true;
+constexpr float singlerelevel = 1.9999f;
 constexpr float otherrelevel = 0.0f;
 constexpr bool multirelev = true;
 constexpr int itercount = 5000;
