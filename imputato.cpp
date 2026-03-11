@@ -45,12 +45,12 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
         auto col = myfwbw.col(start);
         for (int k = 0; k < myfwbw.rows(); k++)
         {
-            col(k) = initclassweights[classes[k / 2]];
+            col(k) = initclassweights[majorclass][classes[k / 2]];
         }
     }
     else
         myfwbw.col(start).fill(1.0f / myfwbw.rows());
-    renorm[fw][start] = 0.0f;
+    renorm[majorclass][fw][start] = 0.0f;
 
     if (filterrefs && allowedrefs && onlyref)
     {
@@ -927,7 +927,6 @@ std::tuple<int, int, double> individ::findflip(int index)
     #pragma omp taskloop num_tasks(ploidy * 2), private(indices, probs, oneprobs, ysums, factors), shared(ind, scores, onescores)
     for (int m = 0; m < haplotypes[index].fwbw[0][0].cols(); m++)
     {
-        int majorclass = 0;
         bool first = true;
         double firstthisscore = 0;
         double firstagnscore = 0;
@@ -937,124 +936,127 @@ std::tuple<int, int, double> individ::findflip(int index)
         float sims[ploidy][ploidy];
         float corrs[ploidy];
 
-        if (ibdfactors)
+        for (int majorclass = 0; majorclass < nummajorclasses; majorclass++)
         {
-            if (relevel)
-                for (int k = 0; k < (multirelev ? ploidy : 1); k++)
-                {
-                    haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m).fill(1.0f);
-                }
-            for (int k = 0; k < (antifactors ? ploidy : 1); k++)
+            if (ibdfactors)
             {
-                constexpr int count = antifactors ? 1 : ploidy;
-                std::array<ArrayXXf*, count> first;
-                std::array<ArrayXXf*, count> firstwo;
-                std::array<ArrayXXf*, count> second;
-
-                for (int j = 0; j < count; j++)        
-                {                    
-                    first[j] = &haplotypes[index + k + j].fwbw[majorclass][1 + powofactors];
-                    firstwo[j] = &haplotypes[index + k + j].fwbw[majorclass][1 + fullwo];
-                    second[j] = &haplotypes[index + k + j].fwbw[majorclass][0];
-                }
-                sortibd2b<antigroup, false, count>(probs[k], first, second, m, indices, ysums, haplotypes[index + k].fwbw[majorclass][2 + fullwo].col(m), haplotypes[index + (multirelev ? k : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
-                if (nonsimfactor) sortibd2b<antigroup, false, count>(probs[k], firstwo, second, m, indices, ysums, haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor].col(m), haplotypes[index + (multirelev ? k : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
-            }
-
-            if (relevel)
-            {
-                float sums[ploidy];
-                for (int k = 0; k < ploidy; k++)
-                {
-                    double sum = 0;
-                    for (int i = 0; i < haplotypes.size() * 2; i++)
+                if (relevel)
+                    for (int k = 0; k < (multirelev ? ploidy : 1); k++)
                     {
-                        sum += probs[k][i];
+                        haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m).fill(1.0f);
                     }
-                    sums[k] = 1.0 / std::max(sum, 1e-30);
-                }
-                for (int i = 0; i < haplotypes.size(); i++)
+                for (int k = 0; k < (antifactors ? ploidy : 1); k++)
                 {
-                    float val = 0;
-                    float vals[ploidy];
+                    constexpr int count = antifactors ? 1 : ploidy;
+                    std::array<ArrayXXf*, count> first;
+                    std::array<ArrayXXf*, count> firstwo;
+                    std::array<ArrayXXf*, count> second;
+
+                    for (int j = 0; j < count; j++)        
+                    {                    
+                        first[j] = &haplotypes[index + k + j].fwbw[majorclass][1 + powofactors];
+                        firstwo[j] = &haplotypes[index + k + j].fwbw[majorclass][1 + fullwo];
+                        second[j] = &haplotypes[index + k + j].fwbw[majorclass][0];
+                    }
+                    sortibd2b<antigroup, false, count>(probs[k], first, second, m, indices, ysums, haplotypes[index + k].fwbw[majorclass][2 + fullwo].col(m), haplotypes[index + (multirelev ? k : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
+                    if (nonsimfactor) sortibd2b<antigroup, false, count>(probs[k], firstwo, second, m, indices, ysums, haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor].col(m), haplotypes[index + (multirelev ? k : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
+                }
+
+                if (relevel)
+                {
+                    float sums[ploidy];
                     for (int k = 0; k < ploidy; k++)
                     {
-                        vals[k] = (probs[k][i * 2] + probs[k][i * 2 + 1]) * sums[k];
-                        vals[k] = std::min(vals[k], 1.0f - 1e-4f);
-                        val += vals[k];
-                    }
-                    float origval = val;
-                    if (!ind.singlerelevel)
-                    {
-                        if (val < 1.0f) val = 1.0f;
-                        else
+                        double sum = 0;
+                        for (int i = 0; i < haplotypes.size() * 2; i++)
                         {
-                            if (val > 1.999f) val = 1.999f;
-                            val = (val - 1) / (2 - val);
-                            val = 1 / (1 + val);
-                            
+                            sum += probs[k][i];
                         }
+                        sums[k] = 1.0 / std::max(sum, 1e-30);
                     }
-                    else
+                    for (int i = 0; i < haplotypes.size(); i++)
                     {
-                        if (val < ind.singlerelevel)
-                        {
-                            val = 1.0f;
-                            /*if (multirelev) // reset to 1 per default
-                            {
-                                for (int k = 0; k < ploidy; k++)
-                                {
-                                    haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) = val;
-                                    haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) = val;
-                                }
-                            }*/
-                        }
-                        else
-                        {                            
-                            val = 1.0f;
-                            for (int k = 0; k < ploidy; k++)
-                            {
-                                float clampval = origval;
-                                if (clampval > ind.singlerelevel + vals[k] * ind.singlerelevel)
-                                {
-                                    clampval = ind.singlerelevel + vals[k] * ind.singlerelevel;
-                                }
-                                //float newval = (vals[k] - 1) * (vals[k] + singlerelevel - 1) / (vals[k] * (2 * vals[k] + singlerelevel - 1));
-                                // ax / (ax + 1 - x) = c - (b - x)
-                                float newval = (vals[k] - 1) * (clampval - ind.singlerelevel - vals[k]) / (vals[k] * (clampval - ind.singlerelevel - vals[k] + 1));
-                                if (newval < 1e-3f) newval = 1e-3f;
-                                if (!isfinite(newval)) newval = 1.0f;
-                                if (multirelev)
-                                {
-                                    haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) = newval;
-                                    haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) = newval;
-                                    if ((newval < 1.0f && index == 68 && m == 68) || newval < 0) printf("RELEVEL %d %d %d %d %f %f\t%f %f %f %f\n", index, m, i, k, newval, origval, vals[0], vals[1], vals[2], vals[3]);
-                                }
-                                if (newval < val) val = newval;
-                            }
-                        }
-                    }
-                    if (!multirelev)
-                    {
-                        if ((val < 1.0f && index == 68 && m == 68) || val < 0) printf("RELEVEL %d %d %d %f %f\t%f %f %f %f\n", index, m, i, val, origval, vals[0], vals[1], vals[2], vals[3]);
-                        haplotypes[index].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) = val;
-                        haplotypes[index].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) = val;
-                    }
-
-                    // TODO: Integrate both types better
-                    if (ind.otherrelevel && multirelev /*&& (ind.genotypes[m] < 1 || ind.genotypes[m] > ploidy - 1) && ind.genotypes[m] == -1*/)
-                    {
+                        float val = 0;
+                        float vals[ploidy];
                         for (int k = 0; k < ploidy; k++)
                         {
-                            if (vals[k])
+                            vals[k] = (probs[k][i * 2] + probs[k][i * 2 + 1]) * sums[k];
+                            vals[k] = std::min(vals[k], 1.0f - 1e-4f);
+                            val += vals[k];
+                        }
+                        float origval = val;
+                        if (!ind.singlerelevel)
+                        {
+                            if (val < 1.0f) val = 1.0f;
+                            else
                             {
-                                float newval = 1.0f + (origval - vals[k]) / (vals[k]) * ind.otherrelevel;
-                                if (newval < 1e-3f) newval = 1e-3f;
-                                //if (newval > ploidy) newval = ploidy;
-                                if (!isfinite(newval)) newval = 1.f;
+                                if (val > 1.999f) val = 1.999f;
+                                val = (val - 1) / (2 - val);
+                                val = 1 / (1 + val);
                                 
-                                haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) *= newval;
-                                haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) *= newval;
+                            }
+                        }
+                        else
+                        {
+                            if (val < ind.singlerelevel)
+                            {
+                                val = 1.0f;
+                                /*if (multirelev) // reset to 1 per default
+                                {
+                                    for (int k = 0; k < ploidy; k++)
+                                    {
+                                        haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) = val;
+                                        haplotypes[index + k].fwbw[2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) = val;
+                                    }
+                                }*/
+                            }
+                            else
+                            {                            
+                                val = 1.0f;
+                                for (int k = 0; k < ploidy; k++)
+                                {
+                                    float clampval = origval;
+                                    if (clampval > ind.singlerelevel + vals[k] * ind.singlerelevel)
+                                    {
+                                        clampval = ind.singlerelevel + vals[k] * ind.singlerelevel;
+                                    }
+                                    //float newval = (vals[k] - 1) * (vals[k] + singlerelevel - 1) / (vals[k] * (2 * vals[k] + singlerelevel - 1));
+                                    // ax / (ax + 1 - x) = c - (b - x)
+                                    float newval = (vals[k] - 1) * (clampval - ind.singlerelevel - vals[k]) / (vals[k] * (clampval - ind.singlerelevel - vals[k] + 1));
+                                    if (newval < 1e-3f) newval = 1e-3f;
+                                    if (!isfinite(newval)) newval = 1.0f;
+                                    if (multirelev)
+                                    {
+                                        haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) = newval;
+                                        haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) = newval;
+                                        if ((newval < 1.0f && index == 68 && m == 68) || newval < 0) printf("RELEVEL %d %d %d %d %f %f\t%f %f %f %f\n", index, m, i, k, newval, origval, vals[0], vals[1], vals[2], vals[3]);
+                                    }
+                                    if (newval < val) val = newval;
+                                }
+                            }
+                        }
+                        if (!multirelev)
+                        {
+                            if ((val < 1.0f && index == 68 && m == 68) || val < 0) printf("RELEVEL %d %d %d %f %f\t%f %f %f %f\n", index, m, i, val, origval, vals[0], vals[1], vals[2], vals[3]);
+                            haplotypes[index].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) = val;
+                            haplotypes[index].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) = val;
+                        }
+
+                        // TODO: Integrate both types better
+                        if (ind.otherrelevel && multirelev /*&& (ind.genotypes[m] < 1 || ind.genotypes[m] > ploidy - 1) && ind.genotypes[m] == -1*/)
+                        {
+                            for (int k = 0; k < ploidy; k++)
+                            {
+                                if (vals[k])
+                                {
+                                    float newval = 1.0f + (origval - vals[k]) / (vals[k]) * ind.otherrelevel;
+                                    if (newval < 1e-3f) newval = 1e-3f;
+                                    //if (newval > ploidy) newval = ploidy;
+                                    if (!isfinite(newval)) newval = 1.f;
+                                    
+                                    haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2) *= newval;
+                                    haplotypes[index + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m)(i * 2 + 1) *= newval;
+                                }
                             }
                         }
                     }
@@ -1075,7 +1077,8 @@ std::tuple<int, int, double> individ::findflip(int index)
 
         //#pragma ivdep
         for (int j = 0; j < ploidy; j++)        
-        {                    
+        {
+            int majorclass = haplotypes[index + j].mainmajorclass;
             if (!expklsim)
             {
                 if (sortsim && groupibd2)
@@ -1155,6 +1158,7 @@ std::tuple<int, int, double> individ::findflip(int index)
 
         for (int j = 0; j < ploidy; j++)
         {
+            int majorclass = haplotypes[index + j].mainmajorclass;
             for (int k = 0; k < ploidy; k++)
             {
                 double sumterm = 0;
@@ -1283,7 +1287,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                                 { 
                                     int subindex = ((i * ploidy + n) * 2 + k);
                                     int nowindex = k ? index + j : index + perm[j];
-                                    terms[z] += haplotypes[nowindex].fwbw[majorclass][k].col(m)(subindex);
+                                    terms[z] += haplotypes[nowindex].fwbw[haplotypes[nowindex].mainmajorclass][k].col(m)(subindex);
                                 }
                             }
                             sumagnterm += terms[0] * terms[1];
@@ -1326,6 +1330,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                     double firstscore = sum;
                     for (int j = 0; j < ploidy; j++)
                     {
+                        int majorclass = haplotypes[index + j].mainmajorclass;
                         firstscore += haplotypes[index + j].renorm[majorclass][1][m];   
                         firstscore += haplotypes[index + j].renorm[majorclass][0][m];
                     }
@@ -1361,7 +1366,7 @@ std::tuple<int, int, double> individ::findflip(int index)
     int bestp = 0;
     double bestscore = -1.1e30f;
     double realbestscore = -1.1e30f;    
-    for (int m = 0; m < haplotypes[index].fwbw[majorclass][0].cols(); m++)
+    for (int m = 0; m < haplotypes[index].fwbw[haplotypes[index].mainmajorclass][0].cols(); m++)
     {
         for (int p = permcount - 1; p >= 0; p--)
         {
@@ -1404,7 +1409,6 @@ std::tuple<int, int, double> individ::findflip(int index)
 bool individ::handleflip(int index)
 {
     auto [bestmarker, bestp, bestscore] = findflip(index);
-
 
     array<int, ploidy> perm;
     bool straight = true;
@@ -1523,11 +1527,11 @@ void individ::doposteriorhaplotypes(int index)
             {
                 if (ibd2sort && groupibd2)
                 {
-                    sortibd2b(probswo, {&haplotypes[index + j].fwbw[majorclass][2]}, {&haplotypes[index + j].fwbw[majorclass][0]}, m, indices, ysums, haplotypes[index + (ibdfactors && !antifactors ? 0 : j)].fwbw[majorclass][2 + fullwo + nonsimfactor].col(m), haplotypes[index + (multirelev ? j : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
+                    sortibd2b(probswo, {&haplotypes[index + j].fwbw[mainmajorclass][2]}, {&haplotypes[index + j].fwbw[mainmajorclass][0]}, m, indices, ysums, haplotypes[index + (ibdfactors && !antifactors ? 0 : j)].fwbw[mainmajorclass][2 + fullwo + nonsimfactor].col(m), haplotypes[index + (multirelev ? j : 0)].fwbw[mainmajorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
                 }
                 else
                 {
-                    probswo = haplotypes[index + j].fwbw[majorclass][2].col(m) * haplotypes[index + j].fwbw[majorclass][0].col(m);
+                    probswo = haplotypes[index + j].fwbw[mainmajorclass][2].col(m) * haplotypes[index + j].fwbw[mainmajorclass][0].col(m);
                     if (ibd2sort)
                     {
                         sortibd2(probswo, indices);
@@ -2291,7 +2295,7 @@ void doit()
     #pragma omp parallel
 #pragma omp single
 {
-    std::array<ArrayXXf, 2 + fullwo + 1 + nonsimfactor + oneflip + relevel> fwbw[ploidy];
+    std::array<ArrayXXf, 2 + fullwo + 1 + nonsimfactor + oneflip + relevel> fwbw[nummajorclasses][ploidy];
     #pragma omp taskloop num_tasks(24), private(hapnum, fwbw)
     //#pragma omp parallel for /*num_threads(16),*/ private(hapnum, fwbw)
     for (int i = 0; i < inds.size(); i++)
@@ -2309,22 +2313,25 @@ void doit()
         }
         for (int k = 0; k < ploidy; k++)
         {
-            for (int fw = 0; fw < 2; fw++)
-            #pragma omp task firstprivate(i, k, fw, hapnum)
-            {                            
-                individ& ind = inds[i];
-                haplotypes[hapnum + k].fwbw[majorclass][fw].resize(haplotypes.size() * 2, ourmap.chromposes.size());
-                if (fw && fullwo)
-                    haplotypes[hapnum + k].fwbw[majorclass][2].resize(haplotypes.size() * 2, ourmap.chromposes.size());
-                if (fw /*&& ibdfactors*/)
-                    haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo].resize(haplotypes.size() * 2, ourmap.chromposes.size());
-                if (fw /*&& ibdfactors*/ && nonsimfactor)
-                    haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo + nonsimfactor].resize(haplotypes.size() * 2, ourmap.chromposes.size());    
-                if (fw /*&& ibdfactors*/ && oneflip)
-                    haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip].resize(haplotypes.size() * 2, ourmap.chromposes.size());
-                if (fw /*&& ibdfactors*/ && relevel && (k == 0 || multirelev))
-                    haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].resize(haplotypes.size() * 2, ourmap.chromposes.size());  
-                if (!burnin) haplotypes[hapnum + k].dofwbw(fw, ourmap, majorclass);
+            for (int majorclass = 0; majorclass < nummajorclasses; majorclass++)
+            {
+                for (int fw = 0; fw < 2; fw++)
+                #pragma omp task firstprivate(i, k, fw, hapnum)
+                { 
+                    individ& ind = inds[i];
+                    haplotypes[hapnum + k].fwbw[majorclass][fw].resize(haplotypes.size() * 2, ourmap.chromposes.size());
+                    if (fw && fullwo)
+                        haplotypes[hapnum + k].fwbw[majorclass][2].resize(haplotypes.size() * 2, ourmap.chromposes.size());
+                    if (fw /*&& ibdfactors*/)
+                        haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo].resize(haplotypes.size() * 2, ourmap.chromposes.size());
+                    if (fw /*&& ibdfactors*/ && nonsimfactor)
+                        haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo + nonsimfactor].resize(haplotypes.size() * 2, ourmap.chromposes.size());    
+                    if (fw /*&& ibdfactors*/ && oneflip)
+                        haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip].resize(haplotypes.size() * 2, ourmap.chromposes.size());
+                    if (fw /*&& ibdfactors*/ && relevel && (k == 0 || multirelev))
+                        haplotypes[hapnum + k].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].resize(haplotypes.size() * 2, ourmap.chromposes.size());  
+                    if (!burnin) haplotypes[hapnum + k].dofwbw(fw, ourmap, majorclass);
+                }
             }
         }
         
