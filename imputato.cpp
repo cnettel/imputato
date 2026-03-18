@@ -1352,7 +1352,7 @@ std::tuple<int, int, double> individ::findflip(int index)
 
             //if (index == 16) printf("Flip: %d %d %d %f\n", index, m, p, sum);
             sum += log(2) * (pow2 - firstpow2);
-            sumone += log(2) * (pow2one - firstpow2one);
+            if (oneflip) sumone += log(2) * (pow2one - firstpow2one);
             scores[m][p] = sum - firstthisscore;
             //if (perm[0] >= 2 || perm[1] >= 2) scores[m][p] = -1.1e30f;
             if (oneflip) onescores[m][p] = sumone - firstthisscoreone;
