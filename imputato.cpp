@@ -1202,7 +1202,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                     /*double a = haplotypes[index + j].fwbw[1].col(m)(i);
                     double b = haplotypes[index + k].fwbw[0].col(m)(i);*/
 
-                    //sumterm += probs[k](i);
+                    sumterm += probs[k](i);
                     if (oneflip) sumoneterm += oneprobs[k](i);
                 }
                 if (vetoflip && j != k)
