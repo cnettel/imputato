@@ -124,8 +124,12 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
                     }
                     if (donzcess && nzc > 1)
                     {
-                        double ess = nzsum * nzsum / sqsum;
-                        double sim = (ess - 1) / (nzc - 1);
+                        double sim = 1;
+                        if (sqsum)
+                        {
+                            double ess = nzsum * nzsum / sqsum;
+                            sim = (ess - 1) / (nzc - 1);
+                        }
                         sim *= sim;
                         sim *= nzminfactor;
                         if (sim < 1.0 - nzmaxfactor) sim = 1.0 - nzmaxfactor;
