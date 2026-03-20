@@ -1962,225 +1962,222 @@ void individ::nudgehaplotypes(int index)
 #pragma omp taskloop num_tasks(ploidy * 2)
     for (int i = 0; i < genotypes.size(); i++)
     {
-        if (updallpriors || reads[i][0] + reads[i][1] > 0 || genotypes[i] >= 0)
+        if (!(updallpriors || reads[i][0] + reads[i][1] > 0 || genotypes[i] >= 0)) continue;
+
+        const auto reads = this->reads[i];
+        array<ratiotype, ploidy> ratio;
+        double means[2] = {0};
+        double binomsimcomppower = 1;
+
+        array<ratiotype, ploidy + 1> data[2];
+        bool now = true;        
+        if (!burnin)
         {
-            array<ratiotype, ploidy> ratio;
-            double means[2] = {0};
-            double binomsimcomppower = 1;
-            if (liftmeannprior)
-            for (int m = 0; m < ploidy; m++)
+            data[now].fill(0.f);
+            data[now][0] = 1.0f;
+            for (int j = 0; j < ploidy; j++)
             {
-                auto& priors = haplotypes[index + m].getprior(i);
-                for (int j = 0; j < 2; j++)
-                {
-                    means[j] += priors[j];
-                }                            
-            }
+                now = !now;
+                data[now].fill(0.f);
 
-            if (binomsimcomp)
-            {
-                double avsim = 0;
-                for (int m = 0; m < ploidy; m++)
+                auto& priors = haplotypes[index + j].getprior(i);
+                for (int k = 0; k < ploidy; k++)
                 {
-                    for (int j = 0; j < ploidy; j++)
+                    //float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
+                    for (int n = 0; n < 2 && k + n <= ploidy; n++)
                     {
-                        if (m == j) continue;
-                        avsim += haplotypes[index + m].crosssim[i][j];
+                        data[now][k + n] += data[!now][k] * haplotypes[index + j].posteriorwo[i][n];
                     }
                 }
-                avsim /= (ploidy - 1) * ploidy;
-                binomsimcomppower = 1 - avsim;
             }
-            for (int m = 0; m < ploidy; m++)
+        }
+        else
+        {
+            data[now].fill(1.f);
+        }
+
+        array<ratiotype, ploidy + 1> genotypebias;
+        {
+            //ratiotype sum = 0;
+            genotypebias.fill(0.f);
+            ratiotype sum = 0;
+            for (int m = 0; m <= ploidy; m++)
             {
-                auto reads = this->reads[i];
-                double ourposteriormix = simposteriormix ? fabs(antisimposterior - haplotypes[index + m].sim[i]) :
-                                        ((postmixred ? fabs(antisimposterior - haplotypes[index + m].sim[i]) : 1) * posteriormix);
-                auto& priors = haplotypes[index + m].getprior(i);                                        
+                ratiotype base = data[now][m];
+                int counts[2] = {ploidy - m, m};
+                // TODO WEAKENEPS DROPPED
+                //if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f), abs(counts[1] - genotypes[i]));
+                if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno), abs(counts[1] - genotypes[i]));
+                base *= this->genotypebias[counts[1]];
 
-                if (newpostmix) ourposteriormix = 1 + haplotypes[index + m].sim[i] * (antiredcert ? certterm + priors[0] * priors[1] * certfactor : 1) * (-1 + posteriormix * (simredcert ? certterm + priors[0] * priors[1] * certfactor : 1));
-                if (unknownred && reads[0] + reads[1] == 0 && genotypes[i] == -1) ourposteriormix = 0;
-
-                if (redcertmix)
+                for (int k = 0; k < 2; k++)
                 {
-                    ourposteriormix *= certterm + priors[0] * priors[1] * certfactor;
-                }
-
-                array<ratiotype, ploidy> data[2];
-                data[1].fill(0.f);
-
-                bool now = true;
-                data[1][0] = 1.0f;
-                array<array<double, 2>, ploidy> mixposteriors;
-                for (int j = 0; j < ploidy; j++)
-                {
-                    for (int n = 0; n < 2; n++)
+                    if (reads[k] && !counts[k])
                     {
-                        double val;
-                        if (arimeanmix) val = haplotypes[index + j].posteriorwo[i][n] * (1.0 - ourposteriormix) + haplotypes[index + j].posterior[i][n] * ourposteriormix;
-                        else if (logitmeanmix)
-                        {
-                            val = pow(haplotypes[index + j].posteriorwo[i][n] / (haplotypes[index + j].posteriorwo[i][!n] + 1e-30f), 1.0 - ourposteriormix) *
-                            pow(haplotypes[index + j].posterior[i][n] / (haplotypes[index + j].posterior[i][!n] + 1e-30f), ourposteriormix);
-                            val = val / (1 + val);
-                        }
-                        else
-                            val = pow(haplotypes[index + j].posteriorwo[i][n], 1.0 - ourposteriormix) * pow(haplotypes[index + j].posterior[i][n], ourposteriormix);
-
-                        if (clampmix)
-                        {
-                            val = std::clamp<double>(val, updeps, 1 - updeps);
-                        }
-
-                        mixposteriors[j][n] = val;
-                    }
-                }
-
-                for (int j = 0; j < ploidy; j++)
-                {
-                    if (j == m)
-                    {
+                        base *= 0;
                         continue;
-                    }             
-                    now = !now;
-                    data[now].fill(0.f);
+                    }
+                }                    
 
-                    auto& priors = haplotypes[index + j].getprior(i);
+                int readsum = reads[0] + reads[1];
+                for (int k = 0; k < 2; k++)
+                {
+                    for (int j = 0; j < reads[k]; j++)
+                    {
+                        base /= ploidy * 0.5;
+                        // Only one side of symmetry
+                        if (!k)
+                        {
+                            base *= readsum - j;
+                            base /= j + 1;
+                        }
+                    }
+                }
+                sum += base;
+                genotypebias[m] = base;
+            }
+            sum += 1e-30f;
+            sum = 1/sum;
+            for (int m = 0; m <= ploidy; m++)
+            {
+                genotypebias[m] *= sum;
+            }
+        }
+
+        for (int m = 0; m < ploidy; m++)
+        {
+            double ourposteriormix = simposteriormix ? fabs(antisimposterior - haplotypes[index + m].sim[i]) :
+                                    ((postmixred ? fabs(antisimposterior - haplotypes[index + m].sim[i]) : 1) * posteriormix);
+            auto& priors = haplotypes[index + m].getprior(i);                                        
+
+            if (newpostmix) ourposteriormix = 1 + haplotypes[index + m].sim[i] * (antiredcert ? certterm + priors[0] * priors[1] * certfactor : 1) * (-1 + posteriormix * (simredcert ? certterm + priors[0] * priors[1] * certfactor : 1));
+            if (unknownred && reads[0] + reads[1] == 0 && genotypes[i] == -1) ourposteriormix = 0;
+
+            if (redcertmix)
+            {
+                ourposteriormix *= certterm + priors[0] * priors[1] * certfactor;
+            }
+
+            array<array<double, 2>, ploidy> mixposteriors;
+            for (int j = 0; j < ploidy; j++)
+            {
+                for (int n = 0; n < 2; n++)
+                {
+                    double val;
+                    if (arimeanmix) val = haplotypes[index + j].posteriorwo[i][n] * (1.0 - ourposteriormix) + haplotypes[index + j].posterior[i][n] * ourposteriormix;
+                    else if (logitmeanmix)
+                    {
+                        val = pow(haplotypes[index + j].posteriorwo[i][n] / (haplotypes[index + j].posteriorwo[i][!n] + 1e-30f), 1.0 - ourposteriormix) *
+                        pow(haplotypes[index + j].posterior[i][n] / (haplotypes[index + j].posterior[i][!n] + 1e-30f), ourposteriormix);
+                        val = val / (1 + val);
+                    }
+                    else
+                        val = pow(haplotypes[index + j].posteriorwo[i][n], 1.0 - ourposteriormix) * pow(haplotypes[index + j].posterior[i][n], ourposteriormix);
+
+                    if (clampmix)
+                    {
+                        val = std::clamp<double>(val, updeps, 1 - updeps);
+                    }
+
+                    mixposteriors[j][n] = val;
+                }
+            }
+
+            now = true;
+            data[now].fill(0.f);
+            data[now][0] = 1.0f;
+            for (int j = 0; j < ploidy; j++)
+            {
+                if (j == m)
+                {
+                    continue;
+                }             
+                now = !now;
+                data[now].fill(0.f);
+
+                auto& priors = haplotypes[index + j].getprior(i);
+                for (int k = 0; k < ploidy; k++)
+                {
+                    //float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
+                    for (int n = 0; n < 2 && k + n < ploidy; n++)
+                    {
+                        data[now][k + n] += data[!now][k] * (burnin ? (mulpriorrest ? priors[n] : 0.5f) :
+                        ((restposteriorwo ? 
+                            mixposteriors[j][n] :
+                        haplotypes[index + j].posterior[i][n]) * (antipriorpp ? priors[!n] : 1.0f))) /*/ /* sum*/;
+                    }
+                }
+            }
+
+            std::array<std::array<double, 2>, ploidy + 1> sums;
+            for (int i = 0; i <= ploidy + 1; i++)
+            {
+                sums[i].fill(0.f);
+            }
+            for (int j = 0; j < 2; j++)
+            {
+                for (int a = 0; a < ploidy; a++)
+                {
+                    double base = data[now][a];
+                    int counts[2] = {ploidy - 1 - a, a};
+                    counts[j]++;
+
+                    if ((burnin && mulpriorself) || (!burnin && propriorself)) base *= priors[j];
+                    if (!burnin && antipriorself) base *= priors[!j];
+                    if (!burnin && earlypost) base *= (selfposteriorwo && !nonwoearly) ?
+                        (mixposteriors[m][j]) : haplotypes[index + m].posterior[i][j];
+                    if ((burninassgn && burnin) || (postassgn && !burnin))
+                    {
+                        double notme = allnotme ? pow((ploidy - 1.0) / ploidy, reads[0] + reads[1]) :
+                                                    (reads[j] ? pow((counts[j] - 1.0) / counts[j], reads[j]) : 1.0);
+                        sums[counts[1]][j] += base * (1.0 - notme);
+                        sums[counts[1]][0] += base * notme * ((earlypost && !burnin) ? ((selfposteriorwo && !selfpriorunass) ? haplotypes[index + m].posteriorwo[i][0] : haplotypes[index + m].posterior[i][0]) : 0.5);
+                        sums[counts[1]][1] += base * notme * ((earlypost && !burnin) ? ((selfposteriorwo && !selfpriorunass) ? haplotypes[index + m].posteriorwo[i][1] : haplotypes[index + m].posterior[i][1]) : 0.5);
+                    }
+                    else
+                    {
+                        sums[counts[1]][j] += base;
+                    }                        
+                } 
+                //if (!burnin) sums[j] *= haplotypes[index + m].posterior[i][j] * priors[!j];
+                /*else
+                {
+                    double factor = 0;
                     for (int k = 0; k < ploidy; k++)
                     {
-                        //float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
-                        for (int n = 0; n < 2 && k + n < ploidy; n++)
-                        {
-                            data[now][k + n] += data[!now][k] * (burnin ? (mulpriorrest ? priors[n] : 0.5f) :
-                            ((restposteriorwo ? 
-                                mixposteriors[j][n] :
-                            haplotypes[index + j].posterior[i][n]) * (antipriorpp ? priors[!n] : 1.0f))) /*/ /* sum*/;
-                        }
+                        auto& subpriors = haplotypes[index + k].getprior(i);
+                        factor += subpriors[j];
                     }
-                }
-
-                double sums[2] = {0};
-                for (int j = 0; j < 2; j++)
-                {
-                    for (int a = 0; a < ploidy; a++)
-                    {
-                        double base = data[now][a];
-                        int counts[2] = {ploidy - 1 - a, a};
-                        counts[j]++;
-                        if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f), abs(counts[1] - genotypes[i]));
-                        base *= genotypebias[counts[1]];
-
-                        for (int k = 0; k < 2; k++)
-                        {
-                            if (reads[k] && !counts[k])
-                            {
-                                base *= 0;
-                                continue;
-                            }
-
-                            if (!disableplacement)
-                            {
-                            int opts = reads[k] + counts[k] - 1;
-                            // counts[k] groups, counts[k] -1 sentinel elements identifying borders
-                            for (int z = 0; z < counts[k] - 1; z++)
-                            {
-                                base *= opts - z;
-                                base /= counts[k] - 1 - z;
-                            }
-                        }
-                        }
-                        if ((burnin || permpostburnin) && !disableperm)
-                        {
-                            if (allhets)
-                            {
-                                if (counts[0] != ploidy || counts[1] != ploidy)
-                                {
-                                    base *= ploidy;
-                                }
-                            }
-                            else
-                            if (!altperm)
-                            for (int z = 0; z < counts[0]; z++)
-                            {
-                                base *= ploidy - z;
-                                base /= counts[0] - z;
-                            }
-                            else
-                            {
-                                int val = counts[j];
-                                if (counts[j] < ploidy && ploidy - counts[j] < val) val = ploidy - counts[j];
-                                base /= val;
-                            }
-                        }
-                        int readsum = reads[0] + reads[1];
-                        for (int k = 0; k < 2; k++)
-                        {
-                            for (int j = 0; j < reads[k]; j++)
-                            {
-                                base *= pow(counts[k], binomsimcomppower);
-                                base /= ploidy * 0.5;
-                                // Only one side of symmetry
-                                if (!k)
-                                {
-                                    base *= readsum - j;
-                                    base /= j + 1;
-                    }
-                            }
-                        }
-                        if ((burnin && mulpriorself) || (!burnin && propriorself)) base *= priors[j];
-                        if (!burnin && antipriorself) base *= priors[!j];
-                        if (!burnin && earlypost) base *= (selfposteriorwo && !nonwoearly) ?
-                            (mixposteriors[m][j]) : haplotypes[index + m].posterior[i][j];
-                        if ((burninassgn && burnin) || (postassgn && !burnin))
-                        {
-                            double notme = allnotme ? pow((ploidy - 1.0) / ploidy, reads[0] + reads[1]) :
-                                                      (reads[j] ? pow((counts[j] - 1.0) / counts[j], reads[j]) : 1.0);
-                            sums[j] += base * (1.0 - notme);
-                            sums[0] += base * notme * ((earlypost && !burnin) ? ((selfposteriorwo && !selfpriorunass) ? haplotypes[index + m].posteriorwo[i][0] : haplotypes[index + m].posterior[i][0]) : 0.5);
-                            sums[1] += base * notme * ((earlypost && !burnin) ? ((selfposteriorwo && !selfpriorunass) ? haplotypes[index + m].posteriorwo[i][1] : haplotypes[index + m].posterior[i][1]) : 0.5);
-                        }
-                        else
-                        {
-                            sums[j] += base;
-                        }                        
-                    } 
-                    if (!burnin && !earlypost) sums[j] *= selfposteriorwo ? haplotypes[index + m].posteriorwo[i][j] : haplotypes[index + m].posterior[i][j];
-                    if (liftmeannprior) sums[j] *= means[j] + (antiselfmean ? -priors[j] + 0.5 : 0.0);
-                    //if (!burnin) sums[j] *= haplotypes[index + m].posterior[i][j] * priors[!j];
-                    /*else
-                    {
-                        double factor = 0;
-                        for (int k = 0; k < ploidy; k++)
-                        {
-                            auto& subpriors = haplotypes[index + k].getprior(i);
-                            factor += subpriors[j];
-                        }
-                        factor /= ploidy;
-                        sums[j] *= factor;
-                    }*/
-                    /*else
-                        sums[j] *= priors[j];*/
-                    /*else 
-                        sums[j] * (reads[j] + 0.5) / (reads[0] + reads[1] + 1);*/
-                }
-
-                if (index == 0 && m == 0 && i == 11)
-                {
-                    printf("\n DATA: %lf %lf\t%f %f %f %f\t%f %f\n", sums[0], sums[1], data[now][0], data[now][1], data[now][2], data[now][3], haplotypes[index + 0].posterior[i][0], haplotypes[index + 0].posterior[i][1]);
-                }
-                ratio[m] = sums[0] / (sums[0] + sums[1] + 1e-30f);
+                    factor /= ploidy;
+                    sums[j] *= factor;
+                }*/
+                /*else
+                    sums[j] *= priors[j];*/
+                /*else 
+                    sums[j] * (reads[j] + 0.5) / (reads[0] + reads[1] + 1);*/
             }
-            updatenewpriors(i, ratio);
-            /*if (!burnin)
+
+            if (index == 0 && m == 0 && i == 11)
             {
-            for (int m = 0; m < ploidy; m++)
-            {
-                ratio[m] = haplotypes[index + m].posterior[i][0];
+                printf("\n DATA: %lf %lf\t%f %f %f %f\t%f %f\n", sums[0], sums[1], data[now][0], data[now][1], data[now][2], data[now][3], haplotypes[index + 0].posterior[i][0], haplotypes[index + 0].posterior[i][1]);
             }
-            updatenewpriors(i, ratio);
-            updatenewpriors(i, ratio);
-            }*/
+
+            ratio[m] = 0;
+            for (int i = 0; i <= ploidy; i++)
+            {
+                ratio[m] += sums[i][0] / (sums[i][0] + sums[i][1] + 1e-30f) * genotypebias[i];
+            }
         }
+        updatenewpriors(i, ratio);
+        /*if (!burnin)
+        {
+        for (int m = 0; m < ploidy; m++)
+        {
+            ratio[m] = haplotypes[index + m].posterior[i][0];
+        }
+        updatenewpriors(i, ratio);
+        updatenewpriors(i, ratio);
+        }*/
     }
 #pragma omp taskwait
 }
