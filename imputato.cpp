@@ -1215,7 +1215,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                         {
                             sortibd2b<antigflip>(oneprobs[k], {&haplotypes[index + j].fwbw[majorclass][2 + fullwo + nonsimfactor + 1]}, {&haplotypes[index + j].fwbw[majorclass][0]}, m, indices, ysums, haplotypes[index + (antifactors ? z : 0)].fwbw[majorclass][2 + fullwo].col(m), haplotypes[index + (multirelev ? z : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
                         }
-                        sortibd2b<antigflip>(probs[k], {&haplotypes[index + j].fwbw[majorclass][1]}, {&haplotypes[index + k].fwbw[majorclass][0]}, m, indices, ysums, haplotypes[index + (antifactors ? z : 0)].fwbw[majorclass][2 + fullwo].col(m), haplotypes[index + (multirelev ? z : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));  
+                        sortibd2b<antigflip>(probs[k], {&haplotypes[index + j].fwbw[majorclass][1]}, {&haplotypes[index + k].fwbw[majorclass][0]}, m, indices, ysums, haplotypes[index + (antifactors ? z : 0)].fwbw[majorclass][2 + fullwo].col(m), haplotypes[index + (multirelev ? z : 0)].fwbw[majorclass][2 + fullwo + nonsimfactor + oneflip + relevel].col(m));
 
                         for (int i = 0; i < haplotypes.size() * 2; i++)
                         {
@@ -1229,7 +1229,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                         if (sumoneterm2 < sumoneterm) sumoneterm = sumoneterm2;
                     }
                 }
-                singlescores[j][k] = log(frexp(sumterm + 1e-300, &pow2s[j][k]));
+                singlescores[j][k] = log(frexp(sumterm + 1e-300, &pow2s[j][k])) + (haplotypes[index + k].renorm[majorclass][0][m] - haplotypes[index + j].renorm[majorclass][0][m]);
                 if (oneflip) onesinglescores[j][k] = log(frexp(sumoneterm + 1e-300, &onepow2s[j][k]));
             }
         }
