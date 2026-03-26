@@ -2000,10 +2000,10 @@ void individ::nudgehaplotypes(int index)
             data[now].fill(1.f);
         }
 
-        array<ratiotype, ploidy + 1> genotypebias;
+        array<ratiotype, ploidy + 1> genotypebiasnow;
         {
             //ratiotype sum = 0;
-            genotypebias.fill(0.f);
+            genotypebiasnow.fill(0.f);
             ratiotype sum = 0;
             for (int m = 0; m <= ploidy; m++)
             {
@@ -2012,7 +2012,7 @@ void individ::nudgehaplotypes(int index)
                 // TODO WEAKENEPS DROPPED
                 //if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f), abs(counts[1] - genotypes[i]));
                 if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno), abs(counts[1] - genotypes[i]));
-                base *= this->genotypebias[counts[1]];
+                base *= genotypebias[counts[1]];
 
                 for (int k = 0; k < 2; k++)
                 {
@@ -2038,13 +2038,13 @@ void individ::nudgehaplotypes(int index)
                     }
                 }
                 sum += base;
-                genotypebias[m] = base;
+                genotypebiasnow[m] = base;
             }
             sum += 1e-30f;
             sum = 1/sum;
             for (int m = 0; m <= ploidy; m++)
             {
-                genotypebias[m] *= sum;
+                genotypebiasnow[m] *= sum;
             }
         }
 
@@ -2169,7 +2169,7 @@ void individ::nudgehaplotypes(int index)
             ratio[m] = 0;
             for (int i = 0; i <= ploidy; i++)
             {
-                ratio[m] += sums[i][0] / (sums[i][0] + sums[i][1] + 1e-30f) * genotypebias[i];
+                ratio[m] += sums[i][0] / (sums[i][0] + sums[i][1] + 1e-30f) * genotypebiasnow[i];
             }
         }
         updatenewpriors(i, ratio);
