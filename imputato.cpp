@@ -1693,7 +1693,7 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
-    auto updatenewpriors = [this, index] (int i, array<ratiotype, ploidy>& ratio)
+    auto updatenewpriors = [this, index] (int i, array<ratiotype, ploidy>& ratio, ratiotype renormproportion = -1)
     {
         array<double, ploidy> val, step, midpoints, origmidpoints, powomidpoints;
         double abssum = 0;
@@ -1733,6 +1733,32 @@ void individ::nudgehaplotypes(int index)
             }
         };
         if (preextremis) doextremis();
+
+        if (renormproportion >= 0)
+        {
+            ratiotype sum = 0;
+            for (ratiotype r : ratio)
+            {
+                sum += r;
+            }
+
+            sum /= ploidy;
+            if ((sum < updeps && renormproportion < updeps) || (sum > 1 - updeps && renormproportion > 1 - updeps))
+            {            
+            }
+            else
+            {
+                renormproportion = std::clamp<ratiotype>(renormproportion, updeps, 1 - updeps);
+                sum = std::clamp<ratiotype>(sum, updeps, 1 - updeps);
+                renormproportion = 1 / (1 - renormproportion);
+                sum = 1 / (1 - sum);
+                renormproportion /= sum;
+                for (ratiotype& r : ratio)
+                {
+                    r *= renormproportion;
+                }
+            }
+        }
 
         for (int m = 0; m < ploidy; m++)
         {
@@ -2013,6 +2039,7 @@ void individ::nudgehaplotypes(int index)
                 //if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f), abs(counts[1] - genotypes[i]));
                 if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno), abs(counts[1] - genotypes[i]));
                 base *= genotypebias[counts[1]];
+                if (!burnin) base *= globgenobias[i][counts[1]];
 
                 for (int k = 0; k < 2; k++)
                 {
@@ -2172,7 +2199,13 @@ void individ::nudgehaplotypes(int index)
                 ratio[m] += sums[i][0] / (sums[i][0] + sums[i][1] + 1e-30f) * genotypebiasnow[i];
             }
         }
-        updatenewpriors(i, ratio);
+        ratiotype renormproportion = 0;
+        for (int i = 0; i <= ploidy; i++)
+        {
+            renormproportion += genotypebiasnow[i] * (ploidy - i);
+        }
+        renormproportion /= ploidy;
+        updatenewpriors(i, ratio, renormproportion);
         /*if (!burnin)
         {
         for (int m = 0; m < ploidy; m++)
@@ -2296,8 +2329,57 @@ void doit()
     #pragma omp parallel
 #pragma omp single
 {
-    std::array<ArrayXXf, 2 + fullwo + 1 + nonsimfactor + oneflip + relevel> fwbw[nummajorclasses][ploidy];
-    #pragma omp taskloop num_tasks(24), private(hapnum, fwbw)
+    globgenobias.resize(priors.size());
+    #pragma omp taskloop
+    for (int i = 0; i < priors.size(); i++)
+    {
+        genprob alleles = {0};
+        for (genprob& g : priors[i])
+        {
+            alleles[0] += g[0];
+            alleles[1] += g[1];
+        }
+        bool now = true;
+        array<array<float, ploidy + 1>, 2> data;
+        double sum = 0;
+        sum = alleles[0] + alleles[1];
+        alleles[0] /= sum;
+        alleles[1] /= sum;
+
+        data[now].fill(0);
+        data[now][0] += 1.0f;
+
+        for (int k = 0; k < ploidy; k++)
+        {
+            now = !now;
+            data[now].fill(0);
+            for (int i = 0; i <= ploidy; i++)
+            {                
+                for (int j = 0; j < 2 && j + i <= ploidy; j++)
+                {
+                    data[now][i + j] += data[!now][i] * alleles[j];
+                }
+            }
+        }
+
+        sum = 0;
+        for (int i = 0; i <= ploidy; i++)
+        {
+            if (i != 0 && i != ploidy) data[now][i] *= 0.5;
+            sum += data[now][i];
+        }
+        sum = 1 / (sum + 1e-30f);
+        for (int j = 0; j <= ploidy; j++)
+        {
+            data[now][j] *= sum;
+            data[now][j] += updeps;
+            globgenobias[i][j] = 1 / data[now][j];
+        }
+    }
+    #pragma omp taskwait
+    std::array<ArrayXXf, 2 + fullwo + 1 + nonsimfactor + oneflip + relevel> fwbw[ploidy][nummajorclasses];
+    int outer_tasks = omp_get_max_threads() / ploidy / 4 + 1;
+    #pragma omp taskloop num_tasks(outer_tasks), private(hapnum, fwbw)
     //#pragma omp parallel for /*num_threads(16),*/ private(hapnum, fwbw)
     for (int i = 0; i < inds.size(); i++)
     {
