@@ -1687,7 +1687,7 @@ void individ::doposteriorhaplotypes(int index)
                 if (dovar)
                 {
                     if (scaleunc) uncvar = std::max((((uncvar / var) - uncshift) / (1 - uncshift)), 1e-30);
-                    haplotypes[index + j].getnewanyprior(m) = std::max(1e-30, dovarunc ? uncvar : (onlyvar ? var : (1 - var + uncvar)));
+                    haplotypes[index + j].getnewanyprior(m) = std::min(1.0, std::max(1e-30, dovarunc ? uncvar : (onlyvar ? var : (1 - var + uncvar))));
                 }
                 if (wounc)
                 {
