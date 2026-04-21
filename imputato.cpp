@@ -2104,6 +2104,7 @@ void individ::nudgehaplotypes(int index)
             {
                 ourposteriormix *= certterm + priors[0] * priors[1] * certfactor;
             }
+            ourposteriormix = 1;
 
             array<array<double, 2>, ploidy> mixposteriors;
             for (int j = 0; j < ploidy; j++)
