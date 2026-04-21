@@ -1106,7 +1106,9 @@ std::tuple<int, int, double> individ::findflip(int index)
                         sortibd2(probs[j], indices);
                     }
                 }
-                corrs[j] = 1.0f / (sqrt((probs[j] * probs[j]).sum()) + 1e-30f);
+                //corrs[j] = 1.0f / (sqrt((probs[j] * probs[j]).sum()) + 1e-30f);
+                corrs[j] = sqrt(1.0f / probs[j].sum());
+                //corrs[j] = 1.0f / (probs[j].sum() + 1e-30f);
             }
             else
             {
@@ -1154,7 +1156,8 @@ std::tuple<int, int, double> individ::findflip(int index)
                 }
                 if (!expklsim)
                 {
-                    haplotypes[index + j].crosssim[m][k] = std::clamp<float>((probs[j] * probs[k]).sum() * corrs[j] * corrs[k], 0, 1);
+                    haplotypes[index + j].crosssim[m][k] = std::clamp<float>(sqrt(probs[j] * probs[k]).sum() * corrs[j] * corrs[k], 0, 1);
+                    //haplotypes[index + j].crosssim[m][k] = 1 - std::clamp<float>(abs(probs[j] * corrs[j] - probs[k] * corrs[k]).sum() * 0.5, 0, 1);
                 }
                 else
                 {
