@@ -783,9 +783,11 @@ void individ::samplehaplotypes(int index)
     for (int i = 0; i < genotypes.size(); i++)
     {
         double sum = 0;
+        int readsum = reads[i][0] + reads[i][1];
+        float factor = (genotypes[i] != -1) ? 1 : 1 - pow((ploidy - 1.0) / ploidy, readsum);
         for (int j = 0; j < ploidy; j++)
         {
-            haplotypes[index + j].offset[i] = distribution(rng);
+            haplotypes[index + j].offset[i] = distribution(rng) * factor;
             if (halfparinit && j % 2)
             {
                 haplotypes[index + j].offset[i] = -haplotypes[index + j - 1].offset[i];
