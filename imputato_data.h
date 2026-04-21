@@ -93,7 +93,7 @@ vector<vector<genprob> > priors;
 vector<vector<genprob> > newpriors;
 vector<vector<float> > anypriors;
 vector<vector<float> > newanypriors;
-vector<array<float, ploidy + 1>> globgenobias;
+vector<array<float, 2>> globallelebias;
 
 vector<haplotype> haplotypes;
 

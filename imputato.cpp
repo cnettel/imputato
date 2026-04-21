@@ -1047,7 +1047,7 @@ std::tuple<int, int, double> individ::findflip(int index)
                         }
 
                         // TODO: Integrate both types better
-                        if (ind.otherrelevel && multirelev /*&& (ind.genotypes[m] < 1 || ind.genotypes[m] > ploidy - 1) && ind.genotypes[m] == -1*/)
+                        if (ind.otherrelevel && multirelev /*&& (ind.genotypes[m] < 1 || ind.genotypes[m] > ploidy - 1)*/ && ind.genotypes[m] == -1)
                         {
                             for (int k = 0; k < ploidy; k++)
                             {
@@ -2016,7 +2016,9 @@ void individ::nudgehaplotypes(int index)
                     //float sum = haplotypes[index + j].posterior[i][0] + haplotypes[index + j].posterior[i][1];
                     for (int n = 0; n < 2 && k + n <= ploidy; n++)
                     {
-                        data[now][k + n] += data[!now][k] * haplotypes[index + j].posteriorwo[i][n];
+                        float sim = haplotypes[index + j].sim[i];
+                        data[now][k + n] += data[!now][k] * /*pow(haplotypes[index + j].posteriorwo[i][n], 1 - sim) /** globallelebias[i][n]*/ /* *
+                                                             pow(haplotypes[index + j].getprior(i)[n], sim))*/ ((1-sim) * haplotypes[index + j].posteriorwo[i][n] + sim * haplotypes[index + j].getprior(i)[n]);
                     }
                 }
             }
@@ -2035,11 +2037,10 @@ void individ::nudgehaplotypes(int index)
             {
                 ratiotype base = data[now][m];
                 int counts[2] = {ploidy - m, m};
-                // TODO WEAKENEPS DROPPED
+                // TODO WEAKENEPS DROPPEDz
                 //if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f), abs(counts[1] - genotypes[i]));
                 if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno), abs(counts[1] - genotypes[i]));
                 base *= genotypebias[counts[1]];
-                if (!burnin) base *= globgenobias[i][counts[1]];
 
                 for (int k = 0; k < 2; k++)
                 {
@@ -2064,6 +2065,8 @@ void individ::nudgehaplotypes(int index)
                         }
                     }
                 }
+                //base *= (m == 1) ? std::max(1 - haplotypes[index + 0].sim[i], 1e-10f) : 1;
+
                 sum += base;
                 genotypebiasnow[m] = base;
             }
@@ -2329,51 +2332,47 @@ void doit()
     #pragma omp parallel
 #pragma omp single
 {
-    globgenobias.resize(priors.size());
+    globallelebias.resize(priors.size());
     #pragma omp taskloop
     for (int i = 0; i < priors.size(); i++)
     {
         genprob alleles = {0};
+        int index = 0;
         for (genprob& g : priors[i])
         {
             alleles[0] += g[0];
             alleles[1] += g[1];
         }
         bool now = true;
-        array<array<float, ploidy + 1>, 2> data;
-        double sum = 0;
+        double sum = 0;        
         sum = alleles[0] + alleles[1];
         alleles[0] /= sum;
         alleles[1] /= sum;
 
-        data[now].fill(0);
-        data[now][0] += 1.0f;
-
-        for (int k = 0; k < ploidy; k++)
-        {
-            now = !now;
-            data[now].fill(0);
-            for (int i = 0; i <= ploidy; i++)
-            {                
-                for (int j = 0; j < 2 && j + i <= ploidy; j++)
-                {
-                    data[now][i + j] += data[!now][i] * alleles[j];
-                }
-            }
-        }
-
+        alleles[0] += updeps;
+        alleles[1] += updeps;
+        
         sum = 0;
-        for (int i = 0; i <= ploidy; i++)
+        for (int i = 0; i < 2; i++)
         {
-            if (i != 0 && i != ploidy) data[now][i] *= 0.5;
-            sum += data[now][i];
+            sum += alleles[i];
         }
         sum = 1 / (sum + 1e-30f);
-        for (int j = 0; j <= ploidy; j++)
+        for (int i = 0; i < 2; i++)            
         {
-            data[now][j] *= sum;
-            data[now][j] += updeps;
-            globgenobias[i][j] = 1 / data[now][j];
+            alleles[i] *= sum;
+        }
+        sum = 0;
+        for (int i = 0; i < 2; i++)
+        {
+            alleles[i] += updeps;
+            alleles[i] = 1 / alleles[i];
+            sum += alleles[i];
+        }
+        sum = 1 / sum;
+        for (int j = 0; j < 2; j++)
+        {
+            globallelebias[i][j] = alleles[j] * sum;
         }
     }
     #pragma omp taskwait
