@@ -33,6 +33,8 @@ int basehaps;
 void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
 {
     ArrayXXf& myfwbw = fwbw[majorclass][fw];
+    ArrayXf tempcol;
+    tempcol.resize(myfwbw.rows());
     int colcount = myfwbw.cols();
 
     int start = fw ? 0 : colcount - 1;
@@ -40,7 +42,7 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
     int step = fw ? 1 : -1;
     int sidestep = fw ? 0 : -1;
 
-    if (fw)
+    if (fw || true)
     {
         auto col = myfwbw.col(start);
         for (int k = 0; k < myfwbw.rows(); k++)
@@ -91,6 +93,7 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
                 int nzc = 0;
                 float nzmin = 1e30f;
                 double nzsum = 0;
+                double tempcolsum = 0;
                 double sqsum = 0;
                 for (int i = 0; i < myfwbw.rows(); i++)
                 {
@@ -100,6 +103,7 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
                         nzc++;
                     }
                     nzsum += col(i);
+                    tempcolsum += tempcol(i);
                     if (donzcess)
                     {
                         sqsum += col(i) * col(i);
@@ -137,7 +141,7 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
                         {
                             printf("NZWARN: %d %d %d %lf %lf %lf %d\n", getindex(), m, step, sim, nzsum, sqsum, nzc);
                         }
-                        col = col * (1 - sim) + myfwbw.col(from) * sim * nzsum;
+                        col = col * (1 - sim) + tempcol * sim * nzsum / tempcolsum;
                     }
                 }
             }
@@ -148,10 +152,17 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
             srcrenorm = renorm[majorclass][fw][from];
             myfwbw.col(m + sidestep) = myfwbw.col(from);
             if (!fw /*&& getanyprior(from)*/) doemit(col, getanyprior(from), getprior(from), from, indices);
-            if (!fw && prelatenz) donz();
+            tempcol = 0.5 * (col + col.reshaped(2, col.size() / 2).colwise().reverse().reshaped());
+            if (!fw && prelatenz) donz();            
             dotransition(col, col, themap, from, step, getindex(), majorclass);
 
             if (!latenz && (fw || !prelatenz)) donz();
+        }
+
+        for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
+        {
+            col(j * 2) = 0;
+            col(j * 2 + 1) = 0;
         }
 
         if (fw /*&& getanyprior(m + sidestep)*/)
@@ -160,14 +171,10 @@ void haplotype::dofwbw(bool fw, const map& themap, int majorclass)
             {
                 fwbw[majorclass][2].col(m + sidestep) = myfwbw.col(m + sidestep);
             }
+            if (latenz) doemit(tempcol, getanyprior(m + sidestep), getprior(m + sidestep), m + sidestep, indices);            
             doemit(col, getanyprior(m + sidestep), getprior(m + sidestep), m + sidestep, indices);
         }
 
-        for (int i = 0, j = getindex() / ploidy * ploidy; i < ploidy; i++, j++)
-        {
-            col(j * 2) = 0;
-            col(j * 2 + 1) = 0;
-        }
         if (latenz && (fw || !prelatenz)) donz();
 
         float sum = col.sum();
