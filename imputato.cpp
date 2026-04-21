@@ -1705,8 +1705,9 @@ void individ::doposteriorhaplotypes(int index)
 
 void individ::nudgehaplotypes(int index)
 {
-    auto updatenewpriors = [this, index] (int i, array<ratiotype, ploidy>& ratio, ratiotype renormproportion = -1)
+    auto updatenewpriors = [this, index] (int i, array<ratiotype, ploidy>& ratio, float speed = 1.0)
     {
+        ratiotype renormproportion = -1;
         array<double, ploidy> val, step, midpoints, origmidpoints, powomidpoints;
         double abssum = 0;
         double plainsum = 0;
@@ -1881,7 +1882,7 @@ void individ::nudgehaplotypes(int index)
             {
                 if (logitstep)
                 {
-                    step[m] = midpoint - val[m];
+                    step[m] = (midpoint - val[m]) * speed;
                 }
                 else
                 if (advstep)
@@ -1901,7 +1902,7 @@ void individ::nudgehaplotypes(int index)
             }
             else
             {
-                step[m] = midpoint - val[m];
+                step[m] = (midpoint - val[m]) * speed;
             }
             if (index == 0 && i == 3) printf("\n %d %d %d %lf %lf\n", index, m, i, val[m], step[m]);
 
@@ -2220,7 +2221,10 @@ void individ::nudgehaplotypes(int index)
             renormproportion += genotypebiasnow[i] * (ploidy - i);
         }
         renormproportion /= ploidy;
-        updatenewpriors(i, ratio, renormproportion);
+        float speed = 0;
+        float target[ploidy + 1] = {0.25, 0.5, 0.25};
+        for (int i = 0; i <= ploidy; i++) { speed += pow(sqrt(genotypebiasnow[i]) - sqrt(target[i]), 2); }
+        updatenewpriors(i, ratio, speed /*renormproportion*/);
         /*if (!burnin)
         {
         for (int m = 0; m < ploidy; m++)
