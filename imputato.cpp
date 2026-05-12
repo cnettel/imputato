@@ -5,6 +5,7 @@
 #include <numeric>
 #include <tuple>
 #include <math.h>
+#include <omp.h>
 
 #include "imputato_data.h"
 
