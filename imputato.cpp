@@ -2228,7 +2228,17 @@ void individ::nudgehaplotypes(int index)
         renormproportion /= ploidy;
         float speed = 0;
         float target[ploidy + 1] = {0.25, 0.5, 0.25};
-        for (int i = 0; i <= ploidy; i++) { speed += pow(sqrt(genotypebiasnow[i]) - sqrt(target[i]), 2); }
+        float targetsum = 0;
+        for (int i = 0; i <= ploidy; i++)
+        {
+            target[i] *= genotypebias[i];
+            targetsum += target[i];
+        }
+        targetsum = 1 / targetsum;
+        
+        for (int i = 0; i <= ploidy; i++) { speed += pow(sqrt(genotypebiasnow[i]) - sqrt(target[i] * targetsum), 2); }        
+        //speed = sqrt(speed / 2);
+        //for (int i = 0; i <= ploidy; i++) { speed += sqrt(genotypebiasnow[i]) * target[i] * targetsum); }
         updatenewpriors(i, ratio, speed /*renormproportion*/);
         /*if (!burnin)
         {
