@@ -1153,6 +1153,7 @@ std::tuple<int, int, double> individ::findflip(int index)
             {                
                 if (k == j)
                 {
+                    haplotypes[index + j].crosssim[m][k] = 1 - std::clamp<float>((probs[j] * probs[k]).sum() * corrs[j] * corrs[k] * corrs[j] * corrs[k], 0, 1);
                     continue;
                 }
                 if (!expklsim)
@@ -1879,11 +1880,13 @@ void individ::nudgehaplotypes(int index)
 
             val[m] = log(num/denom);
             if (extremetension && val[m] * midpoint > 0 && fabs(midpoint) > fabs(val[m])) midpoint *= tension + (tensionoffset ? haplotypes[index + m].offset[i] : 0.0f);
+            float nowspeed = speed;
+            if (!burnin) nowspeed *= (1 - haplotypes[index + m].crosssim[i][m]);
             if (!simplestep)
             {
                 if (logitstep)
                 {
-                    step[m] = (midpoint - val[m]) * speed;
+                    step[m] = (midpoint - val[m]) * nowspeed;
                 }
                 else
                 if (advstep)
@@ -1903,7 +1906,7 @@ void individ::nudgehaplotypes(int index)
             }
             else
             {
-                step[m] = (midpoint - val[m]) * speed;
+                step[m] = (midpoint - val[m]) * nowspeed;
             }
             if (index == 0 && i == 3) printf("\n %d %d %d %lf %lf\n", index, m, i, val[m], step[m]);
 
