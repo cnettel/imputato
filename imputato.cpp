@@ -2265,6 +2265,57 @@ void individ::nudgehaplotypes(int index)
         }*/
     }
 #pragma omp taskwait
+    double extremesim = 0;
+    int extrememarker = -1;
+    for (int i = 0; i < genotypes.size(); i++)
+    {
+        if (!((genotypes[i] > 0 && genotypes[i] < ploidy) || (reads[i][0] && reads[i][1]))) continue;
+
+        bool ok = true;
+        for (int j = 0; j < ploidy; j++)
+        {
+            auto prior = haplotypes[index + j].getnewprior(i);
+            if (prior[0] < 0.25 || prior[1] < 0.25) ok = false;
+        }
+        
+        if (!ok) continue;
+        
+        double minsim = 1;
+        for (int j = 0; j < ploidy; j++)
+            for (int k = j + 1; k < ploidy; k++)
+                if (haplotypes[index + j].crosssim[i][k] < minsim) minsim = haplotypes[index + j].crosssim[i][k];
+        
+        if (minsim > extremesim)
+        {
+            extrememarker = i;
+            extremesim = minsim;
+        }
+    }
+
+    if (extrememarker != -1)
+    {
+        int extremes[2] = {-1, -1};
+        float extremevals[2] = {0, 0};
+        for (int j = 0; j < ploidy; j++)
+        {
+            auto prior = haplotypes[index + j].getnewprior(extrememarker);
+            for (int k = 0; k < 2; k++)
+            {
+                if (prior[k] > extremevals[k])
+                {
+                    extremevals[k] = prior[k];
+                    extremes[k] = j;
+                }
+            }            
+        }
+        for (int k = 0; k < 2; k++)
+        {
+            auto& prior = haplotypes[index + extremes[k]].getnewprior(extrememarker);
+            prior[k] = 1 - updeps;
+            prior[!k] = updeps;
+        }
+        printf("Fixing marker %d at base index %d with similarity %f\n", extrememarker, index, extremesim);
+    }
 }
 
 void zeroclasses()
