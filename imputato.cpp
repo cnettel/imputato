@@ -950,7 +950,7 @@ std::tuple<int, int, double> individ::findflip(int index)
         float sims[ploidy][ploidy];
         float corrs[ploidy];
 
-        for (int majorclass = 0; majorclass < nummajorclasses; majorclass++)
+        for (int majorclass = 0; majorclass < haplotypes[index].herenummajor; majorclass++)
         {
             if (ibdfactors)
             {
@@ -2419,14 +2419,14 @@ void doit()
         hapnum = basehaps + i * ploidy;
         for (int k = 0; k < ploidy; k++)
         {
-            for (int majorclass = 0; majorclass < nummajorclasses; majorclass++)
+            for (int majorclass = 0; majorclass < haplotypes[hapnum + k].herenummajor; majorclass++)
             {
                 haplotypes[hapnum + k].fwbw[majorclass] = &fwbw[k][majorclass][0];
             }
         }
         for (int k = 0; k < ploidy; k++)
         {
-            for (int majorclass = 0; majorclass < nummajorclasses; majorclass++)
+            for (int majorclass = 0; majorclass < haplotypes[hapnum + k].herenummajor; majorclass++)
             {
                 for (int fw = 0; fw < 2; fw++)
                 #pragma omp task firstprivate(i, k, fw, hapnum)

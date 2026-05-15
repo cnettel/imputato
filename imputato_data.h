@@ -46,6 +46,7 @@ struct haplotype
     vector<double> renorm[nummajorclasses][2];
     double likelihood;
     int mainmajorclass = 0;
+    int herenummajor = 1;
     genprob& getprior(int m) const;
     genprob& getnewprior(int m) const;
     float& getanyprior(int m) const;
