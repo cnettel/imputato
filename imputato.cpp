@@ -2248,7 +2248,7 @@ void individ::nudgehaplotypes(int index)
         float speed = 0;
         
         if (!burnin)
-            for (int i = 0; i <= ploidy; i++) { speed += pow(sqrt(genotypebiasnow[i]) - sqrt(target[i] * targetsum), 2); }
+            for (int i = 0; i <= ploidy; i++) { speed += pow(sqrt(genotypebiasnow[i]) - sqrt(target[i]), 2); }
         else
             speed = 1;            
         //speed = sqrt(speed / 2);
