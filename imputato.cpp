@@ -2040,7 +2040,7 @@ void individ::nudgehaplotypes(int index)
                         float sim = haplotypes[index + j].sim[i];
                         data[now][k + n] += data[!now][k] * /*pow(haplotypes[index + j].posteriorwo[i][n], 1 - sim) /** globallelebias[i][n]*/ /* *
                                                              pow(haplotypes[index + j].getprior(i)[n], sim))*/ ((1-sim) * haplotypes[index + j].posteriorwo[i][n] + sim * (neutraluncertain ? 0.5 : haplotypes[index + j].getprior(i)[n]));
-                        datatarget[now][k + n] += datatarget[!now][k] * 0.5;
+                        datatarget[now][k + n] += datatarget[!now][k] * (targetuncertain ? 0.5 : haplotypes[index + j].getprior(i)[n]);
                     }
                 }
             }

@@ -199,3 +199,4 @@ constexpr int itercount = 5000;
 constexpr int burniniters = 500;
 constexpr bool unknownred = true;
 constexpr bool neutraluncertain = true;
+constexpr bool targetuncertain = true;
