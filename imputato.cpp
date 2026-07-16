@@ -2061,7 +2061,7 @@ void individ::nudgehaplotypes(int index)
             for (int m = 0; m <= ploidy; m++)
             {
                 ratiotype base = data[now][m];
-                ratiotype targetbase = data[now][m];
+                ratiotype targetbase = datatarget[now][m];
                 int counts[2] = {ploidy - m, m};
                 // TODO WEAKENEPS DROPPEDz
                 //if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno) * (weakeneps ? (std::min(priors[j], priors[!j])) * 2 : 1.0f), abs(counts[1] - genotypes[i]));
