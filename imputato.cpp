@@ -1881,7 +1881,7 @@ void individ::nudgehaplotypes(int index)
             val[m] = log(num/denom);
             if (extremetension && val[m] * midpoint > 0 && fabs(midpoint) > fabs(val[m])) midpoint *= tension + (tensionoffset ? haplotypes[index + m].offset[i] : 0.0f);
             float nowspeed = speed;
-            if (!burnin) nowspeed *= (1 - haplotypes[index + m].crosssim[i][m]);
+            // if (!burnin) nowspeed *= (1 - haplotypes[index + m].crosssim[i][m]);
             if (!simplestep)
             {
                 if (logitstep)
