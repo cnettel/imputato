@@ -2068,35 +2068,41 @@ void individ::nudgehaplotypes(int index)
                 if (genotypes[i] != -1 && counts[1] != genotypes[i]) base *= pow(std::max(domarkeps ? ourmap.otherepses[i] : 0.0f, epsothergeno), abs(counts[1] - genotypes[i]));
                 base *= genotypebias[counts[1]];
                 targetbase *= genotypebias[counts[1]];
+                bool ok = true;
 
                 for (int k = 0; k < 2; k++)
                 {
                     if (reads[k] && !counts[k])
                     {
                         base *= 0;
-                        targetbase *= 0;
-                        continue;
+                        //targetbase *= 0;
+                        ok = false;
                     }
                 }                    
 
-                int readsum = reads[0] + reads[1];
-                for (int k = 0; k < 2; k++)
+                if (ok)
                 {
-                    for (int j = 0; j < reads[k]; j++)
+                    int readsum = reads[0] + reads[1];
+                    for (int k = 0; k < 2; k++)
                     {
-                        base /= ploidy * 0.5;
-                        targetbase /= ploidy * 0.5;
-                        // Only one side of symmetry
-                        if (!k)
+                        for (int j = 0; j < reads[k]; j++)
                         {
-                            base *= readsum - j;
-                            base /= j + 1;
-                            targetbase *= readsum - j;
-                            targetbase /= j + 1;
+                            base /= ploidy * 0.5;
+                            //// targetbase /= ploidy * 0.5;
+                            // Only one side of symmetry
+                            if (!k)
+                            {
+                                base *= readsum - j;
+                                base /= j + 1;
+                                //// targetbase *= readsum - j;
+                                //// targetbase /= j + 1;
+                            }
                         }
                     }
-                }
+                    // //base *= (m == 1) ? std::max(1 - haplotypes[index + 0].sim[i], 1e-10f) : 1;
                 // //base *= (m == 1) ? std::max(1 - haplotypes[index + 0].sim[i], 1e-10f) : 1;                
+                    // //base *= (m == 1) ? std::max(1 - haplotypes[index + 0].sim[i], 1e-10f) : 1;
+                }
 
                 sum += base;
                 targetsum += targetbase;
